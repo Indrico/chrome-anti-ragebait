@@ -1,6 +1,6 @@
 {
   "name": "chrome-anti-ragebait",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "scripts": {
     "test": "node --test tests/rules.test.cjs && playwright test tests/feed.spec.cjs",

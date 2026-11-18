@@ -6,7 +6,7 @@
   const markedCard = `[${stateAttribute}]`;
   const candidateCards = `${adapter.card}, ${markedCard}`;
   const pendingCards = new Map();
-  const settings = { enabled: true, politicsEnabled: true };
+  const settings = { enabled: true, politicsEnabled: true, searchEnabled: true };
   const settingKeys = Object.keys(settings);
   const changesDuringLoad = {};
 
@@ -26,15 +26,13 @@
   function getBlockDecision({ id, author, texts: parts }) {
     const texts = parts.map((text) => ({ ...text, normalizedText: normalizePostText(text.rawText) }));
     let match = findTermMatch(texts, findProfanityTerm, 'profanity');
+    if (!match && settings.politicsEnabled) {
+      match = findTermMatch(texts, findPoliticalName, 'politics') ??
+        findTermMatch(texts, findPoliticalTerm, 'politics');
+    }
     if (!match && activeSurface === 'home') {
-      if (settings.politicsEnabled) {
-        match = findTermMatch(texts, findPoliticalName, 'politics') ??
-          findTermMatch(texts, findPoliticalTerm, 'politics');
-      }
-      if (!match) {
-        const ragebait = texts.find(({ rawText, language }) => isIndonesianRagebait(rawText, language));
-        if (ragebait) match = { reason: 'ragebait', term: null, normalizedText: ragebait.normalizedText };
-      }
+      const ragebait = texts.find(({ rawText, language }) => isIndonesianRagebait(rawText, language));
+      if (ragebait) match = { reason: 'ragebait', term: null, normalizedText: ragebait.normalizedText };
     }
     if (!match) return null;
 
@@ -152,7 +150,8 @@
     const root = document.documentElement;
     if (!root) return;
     const path = location.pathname.replace(/\/$/u, '') || '/';
-    const nextSurface = settings.enabled ? adapter.surface(path) : null;
+    const surface = adapter.surface(path);
+    const nextSurface = settings.enabled && (surface !== 'search' || settings.searchEnabled) ? surface : null;
     if (activeSurface === nextSurface) return;
 
     observer.disconnect();
@@ -186,7 +185,7 @@
     const previousPoliticsEnabled = settings.politicsEnabled;
     Object.assign(settings, updatedSettings);
     refreshActivation();
-    if (previousSurface === 'home' && activeSurface === 'home' &&
+    if (activeSurface && previousSurface === activeSurface &&
         previousPoliticsEnabled !== settings.politicsEnabled) {
       document.querySelectorAll(adapter.card).forEach(queueCard);
     }
@@ -205,7 +204,7 @@
   navigation.addEventListener('currententrychange', refreshActivation);
 
   chrome.storage.local.onChanged.addListener((changes) => {
-    if (!changes.enabled && !changes.politicsEnabled) return;
+    if (!settingKeys.some((key) => changes[key])) return;
     const updatedSettings = {};
     for (const key of settingKeys) {
       if (changes[key]) updatedSettings[key] = changes[key].newValue !== false;
@@ -218,7 +217,7 @@
     let storedSettings;
     try {
       const stored = await chrome.storage.local.get(settingKeys);
-      storedSettings = { enabled: stored.enabled !== false, politicsEnabled: stored.politicsEnabled !== false };
+      storedSettings = Object.fromEntries(settingKeys.map((key) => [key, stored[key] !== false]));
     } catch (error) {
       storedSettings = { enabled: false };
       console.warn('Anti-Ragebait tidak dapat membaca pengaturan.', error);

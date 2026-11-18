@@ -22,11 +22,11 @@ Untuk memperbarui pemasangan yang sudah ada, salin isi ZIP baru ke folder eksten
 | Instagram | Kartu dengan caption di feed utama | Kartu hasil pencarian kata kunci dengan caption yang tampil |
 | Threads | Kartu di feed For You dan Following | Kartu dengan teks unggahan |
 
-Filter membaca teks unggahan, caption, dan kutipan yang sudah tampil. Di Beranda, daftar politik bawaan mencakup kata dan frasa seperti *pemilu*, *pilkada*, *DPR*, dan *partai politik*. Unggahan yang cocok disembunyikan juga saat nadanya netral.
+Filter membaca teks unggahan, caption, dan kutipan yang sudah tampil. Beranda menyaring ragebait, politik, dan umpatan. Pencarian menyaring politik dan umpatan. Daftar politik bawaan mencakup kata dan frasa seperti *pemilu*, *pilkada*, *DPR*, dan *partai politik*. Unggahan yang cocok disembunyikan juga saat nadanya netral.
 
 Daftar nama politik mencakup presiden dan wakil presiden sejak Reformasi, calon Pilpres 2024, ketua DPR, MPR, dan DPD yang ditetapkan untuk periode 2024–2029, serta 18 partai nasional peserta Pemilu 2024. Filter mengenali nama lengkap, alias seperti **Jokowi** dan **Cak Imin**, serta tagar utuh seperti **#AniesBaswedan**. Singkatan ambigu seperti **PAN** perlu konteks **Partai PAN**. [Sekretariat Kabinet](https://setkab.go.id/profil-kabinet/) · [KPU](https://jdih.kpu.go.id/data/data_kepkpu/2023kpt1632.pdf) · [Risalah MPR](https://www.mpr.go.id/dokumen/risalah/file/1758790146_file_mpr.pdf) · [Daftar partai KPU](https://jdih.kpu.go.id/data/data_kepkpu/2022kpt551.pdf)
 
-Filter politik aktif secara default. Gunakan sakelar **Blokir politik di Beranda** di popup untuk menjedanya di seluruh situs yang didukung sambil tetap menyaring ragebait dan umpatan. Sakelar **Saring unggahan** menjeda semua filter.
+Di popup, **Blokir politik** mengatur kategori politik di Beranda dan pencarian. **Saring hasil pencarian** menjeda filter hanya di halaman pencarian. Keduanya aktif secara default dan berlaku di keempat situs. Sakelar **Saring unggahan** menjeda semua filter.
 
 Di Beranda dan hasil pencarian, satu kata utuh dari daftar umpatan sudah cukup untuk menyembunyikan unggahan. Daftar mencakup *goblok*, *tolol*, *brengsek*, *anjing*, dan *monyet*, termasuk pemakaian harfiah pada unggahan tentang hewan. Riwayat menampilkan alasan **Umpatan** dan kata yang cocok. Pengguna tetap bisa mengetik istilah tersebut di kotak pencarian.
 

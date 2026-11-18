@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Chrome Anti-Ragebait",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Saring ragebait, politik, dan umpatan di X, Facebook, Instagram, dan Threads.",
   "minimum_chrome_version": "120",
   "permissions": ["storage"],

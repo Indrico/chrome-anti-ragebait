@@ -1,4 +1,4 @@
-const toggles = ['enabled', 'politicsEnabled'].map((id) => document.getElementById(id));
+const toggles = ['enabled', 'politicsEnabled', 'searchEnabled'].map((id) => document.getElementById(id));
 const statusMessage = document.getElementById('status');
 const blockedCount = document.getElementById('blocked-count');
 const historyStatus = document.getElementById('history-status');

@@ -174,12 +174,12 @@ for (const site of metaSites) {
     }
 
     await page.evaluate((path) => history.pushState({}, '', path), site.search);
-    await expect(page.locator('#politik')).toBeVisible();
+    await expect(page.locator('#politik')).toHaveCSS('display', 'none');
     await expect(page.locator('#bait')).toBeVisible();
     await expect(page.locator('#kata')).toHaveCSS('display', 'none');
     const search = await openMetaPage(site, site.search);
     await expect(search.locator('#kata')).toHaveCSS('display', 'none');
-    await expect(search.locator('#politik')).toBeVisible();
+    await expect(search.locator('#politik')).toHaveCSS('display', 'none');
     await expect(search.locator('#biasa')).toBeVisible();
     await expect(search.getByRole('textbox', { name: 'Cari' })).toHaveValue('goblok');
 
@@ -226,11 +226,12 @@ test('riwayat dan sakelar gabungan kompatibel dengan data X lama', async () => {
     await expect(popup.locator('.entry-site').filter({ hasText: new RegExp(`^${site}$`) }).first()).toBeVisible();
   }
 
-  await popup.getByRole('switch', { name: 'Blokir politik di Beranda' }).uncheck();
+  await popup.getByRole('switch', { name: 'Blokir politik' }).uncheck();
   for (const page of homes) {
     await expect(page.locator('#politik')).toBeVisible();
     await expect(page.locator('#bait')).toHaveCSS('display', 'none');
   }
+  for (const page of searches) await expect(page.locator('#politik')).toBeVisible();
   await expect(x.locator('#politics')).toBeVisible();
   const master = popup.getByRole('switch', { name: 'Saring unggahan' });
   await master.uncheck();
@@ -351,7 +352,7 @@ test('umpatan diblokir di hasil pencarian dan Beranda serta tercatat di popup', 
   await expect(page.getByRole('textbox', { name: 'Cari di X' })).toHaveValue('goblok');
   await expect(page.locator('#umpatan')).toHaveCSS('display', 'none');
   await expect(page.locator('#normal')).toBeVisible();
-  await expect(page.locator('#politics')).toBeVisible();
+  await expect(page.locator('#politics')).toHaveCSS('display', 'none');
   await expect(page.locator('#blocked')).toBeVisible();
 
   const quoted = makePost('kutipUmpatan', normalText, 'Dia bilang tolol.', 107);
@@ -359,7 +360,7 @@ test('umpatan diblokir di hasil pencarian dan Beranda serta tercatat di popup', 
   await expect(page.locator('#kutipUmpatan')).toHaveCSS('display', 'none');
 
   const popup = await openPopup();
-  await expect(popup.locator('#blocked-count')).toHaveText('2 unggahan unik diblokir');
+  await expect(popup.locator('#blocked-count')).toHaveText('3 unggahan unik diblokir');
   await expect(popup.getByText('@umpatan · Umpatan (goblok)', { exact: true })).toBeVisible();
   await expect(popup.getByText('@kutipUmpatan · Umpatan (tolol)', { exact: true })).toBeVisible();
 
@@ -369,7 +370,7 @@ test('umpatan diblokir di hasil pencarian dan Beranda serta tercatat di popup', 
   await expect(popup.locator('#blocked-count')).toHaveText('5 unggahan unik diblokir');
   await page.evaluate(() => history.back());
   await expect(page).toHaveURL(searchUrl);
-  await expect(page.locator('#politics')).toBeVisible();
+  await expect(page.locator('#politics')).toHaveCSS('display', 'none');
   await expect(page.locator('#umpatan')).toHaveCSS('display', 'none');
 
   const toggle = popup.getByRole('switch', { name: 'Saring unggahan' });
@@ -377,6 +378,64 @@ test('umpatan diblokir di hasil pencarian dan Beranda serta tercatat di popup', 
   await expect(page.locator('#umpatan')).toBeVisible();
   await toggle.check();
   await expect(page.locator('#umpatan')).toHaveCSS('display', 'none');
+});
+
+test('pencarian Prabowo dan sakelar pencarian bekerja lintas situs', async () => {
+  const xSearch = await context.newPage();
+  const searchUrl = 'https://x.com/search?q=prabowo&src=typed_query';
+  const searchFixture = fixture.replace('<div id="timeline">',
+    `<input aria-label="Cari di X" value="prabowo">
+    <div id="timeline">
+      ${makePost('prabowo', 'Prabowo Subianto menghadiri pertemuan.', '', 130)}
+      ${makePost('umpatan', 'Goblok!', '', 131)}`,
+  );
+  await xSearch.route((url) => url.pathname === '/search', (route) => route.fulfill({
+    contentType: 'text/html; charset=utf-8', body: searchFixture,
+  }));
+  const home = await context.newPage();
+  const [, , metaSearches] = await Promise.all([
+    home.goto('https://x.com/home'),
+    xSearch.goto(searchUrl),
+    Promise.all(metaSites.map((site) => openMetaPage(site, site.search))),
+  ]);
+  await expect(xSearch.getByRole('textbox', { name: 'Cari di X' })).toHaveValue('prabowo');
+  await expect(xSearch.locator('#normal')).toBeVisible();
+  const political = [
+    xSearch.locator('#prabowo'),
+    ...metaSearches.map((page) => page.locator('#politik')),
+  ];
+  const profanity = [
+    xSearch.locator('#umpatan'),
+    ...metaSearches.map((page) => page.locator('#kata')),
+  ];
+  for (const card of [...political, ...profanity]) await expect(card).toHaveCSS('display', 'none');
+
+  const popup = await openPopup();
+  const politics = popup.getByRole('switch', { name: 'Blokir politik' });
+  const search = popup.getByRole('switch', { name: 'Saring hasil pencarian' });
+  const count = popup.locator('#blocked-count');
+  await expect(search).toBeChecked();
+  await expect(count).toHaveText('11 unggahan unik diblokir');
+  await expect(popup.getByText('@prabowo · Politik (Prabowo Subianto)', { exact: true })).toBeVisible();
+
+  await politics.uncheck();
+  for (const card of political) await expect(card).toBeVisible();
+  for (const card of profanity) await expect(card).toHaveCSS('display', 'none');
+  await politics.check();
+  for (const card of political) await expect(card).toHaveCSS('display', 'none');
+  await search.uncheck();
+  for (const card of [...political, ...profanity]) await expect(card).toBeVisible();
+  await expect(home.locator('#politics')).toHaveCSS('display', 'none');
+  await expect(home.locator('#blocked')).toHaveCSS('display', 'none');
+
+  await Promise.all([xSearch.reload(), popup.reload()]);
+  await expect(search).toBeEnabled();
+  await expect(search).not.toBeChecked();
+  await expect(politics).toBeChecked();
+  await expect(xSearch.locator('#prabowo')).toBeVisible();
+  await search.check();
+  for (const card of [...political, ...profanity]) await expect(card).toHaveCSS('display', 'none');
+  await expect(count).toHaveText('11 unggahan unik diblokir');
 });
 
 test('sakelar politik berlaku lintas tab dan tersimpan terpisah dari filter lain', async () => {
@@ -388,7 +447,7 @@ test('sakelar politik berlaku lintas tab dan tersimpan terpisah dari filter lain
 
   const popup = await openPopup();
   const master = popup.getByRole('switch', { name: 'Saring unggahan' });
-  const politics = popup.getByRole('switch', { name: 'Blokir politik di Beranda' });
+  const politics = popup.getByRole('switch', { name: 'Blokir politik' });
   await expect(politics).toBeChecked();
   await politics.uncheck();
   await expect(first.locator('#politics')).toBeVisible();
@@ -434,7 +493,7 @@ test('nama politik dan perluasan umpatan memakai sakelar, riwayat, dan total yan
   ));
   for (const id of ['tokoh', 'kutipTokoh', 'partai']) {
     await expect(home.locator(`#${id}`)).toHaveCSS('display', 'none');
-    await expect(search.locator(`#${id}`)).toBeVisible();
+    await expect(search.locator(`#${id}`)).toHaveCSS('display', 'none');
   }
   for (const page of [home, search]) {
     await expect(page.locator('#namaUmum')).toBeVisible();
@@ -453,11 +512,12 @@ test('nama politik dan perluasan umpatan memakai sakelar, riwayat, dan total yan
   await expect(popup.getByText('@partai · Politik (Partai Demokrasi Indonesia Perjuangan)', { exact: true })).toBeVisible();
   await expect(popup.getByText('@satwa · Umpatan (monyet)', { exact: true })).toBeVisible();
 
-  const politics = popup.getByRole('switch', { name: 'Blokir politik di Beranda' });
+  const politics = popup.getByRole('switch', { name: 'Blokir politik' });
   await politics.uncheck();
   await expect(home.locator('#tokoh')).toBeVisible();
   await expect(home.locator('#kutipTokoh')).toBeVisible();
   await expect(home.locator('#partai')).toBeVisible();
+  await expect(search.locator('#partai')).toBeVisible();
   await expect(home.locator('#adopsi')).toHaveCSS('display', 'none');
   await expect(home.locator('#satwa')).toHaveCSS('display', 'none');
   await politics.check();
