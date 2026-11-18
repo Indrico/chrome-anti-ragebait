@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Chrome Anti-Ragebait",
-  "version": "0.7.0",
-  "description": "Saring ragebait, politik, dan umpatan di X, Facebook, Instagram, dan Threads.",
+  "version": "0.8.0",
+  "description": "Saring ragebait, politik, umpatan, dan unggahan centang biru di X, Facebook, Instagram, dan Threads.",
   "minimum_chrome_version": "120",
   "permissions": ["storage"],
   "background": { "service_worker": "background.js" },
@@ -19,7 +19,7 @@
         "https://threads.com/*", "https://www.threads.com/*"
       ],
       "css": ["feed.css"],
-      "js": ["political-names.js", "rules.js", "site-adapters.js", "feed.js"],
+      "js": ["settings.js", "political-names.js", "rules.js", "site-adapters.js", "feed.js"],
       "run_at": "document_start"
     }
   ]

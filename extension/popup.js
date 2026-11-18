@@ -1,4 +1,4 @@
-const toggles = ['enabled', 'politicsEnabled', 'searchEnabled'].map((id) => document.getElementById(id));
+const toggles = Object.keys(filterDefaults).map((id) => document.getElementById(id));
 const statusMessage = document.getElementById('status');
 const blockedCount = document.getElementById('blocked-count');
 const historyStatus = document.getElementById('history-status');
@@ -6,7 +6,7 @@ const blockHistory = document.getElementById('block-history');
 const entryTemplate = document.getElementById('history-entry');
 const formatCount = new Intl.NumberFormat('id-ID');
 const formatTime = new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
-const reasonLabels = { ragebait: 'Ragebait', politics: 'Politik', profanity: 'Umpatan' };
+const reasonLabels = { ragebait: 'Ragebait', politics: 'Politik', profanity: 'Umpatan', blueCheck: 'Centang biru' };
 const siteLabels = { x: 'X', facebook: 'Facebook', instagram: 'Instagram', threads: 'Threads' };
 let historyRequest = 0;
 
@@ -35,7 +35,7 @@ async function initializeToggles() {
   try {
     const settings = await chrome.storage.local.get(toggles.map((toggle) => toggle.id));
     for (const toggle of toggles) {
-      toggle.checked = settings[toggle.id] !== false;
+      toggle.checked = readFilterSetting(toggle.id, settings[toggle.id]);
       toggle.disabled = false;
     }
   } catch {
@@ -57,7 +57,7 @@ function createHistoryEntry(entry) {
   const time = row.querySelector('time');
   time.dateTime = new Date(entry.blockedAt).toISOString();
   time.textContent = formatTime.format(entry.blockedAt);
-  row.querySelector('.entry-excerpt').textContent = entry.excerpt;
+  row.querySelector('.entry-excerpt').textContent = entry.excerpt || 'Unggahan tanpa teks.';
   return row;
 }
 

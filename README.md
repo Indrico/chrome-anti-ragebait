@@ -1,6 +1,6 @@
 # Chrome Anti-Ragebait
 
-Ekstensi Chrome desktop yang otomatis menyaring dugaan ragebait, istilah dan nama politik, serta umpatan di X, Facebook, Instagram, dan Threads. Aturan bawaan berfokus pada bahasa Indonesia, slang, serta campuran Indonesia–Inggris.
+Ekstensi Chrome desktop yang otomatis menyaring dugaan ragebait, istilah dan nama politik, serta umpatan di X, Facebook, Instagram, dan Threads. Aturan teks berfokus pada bahasa Indonesia, slang, serta campuran Indonesia–Inggris. Ekstensi juga menyediakan filter opsional untuk unggahan dari akun bercetang biru.
 
 ## Pemasangan di Chrome
 
@@ -28,15 +28,19 @@ Daftar nama politik mencakup presiden dan wakil presiden sejak Reformasi, calon 
 
 Di popup, **Blokir politik** mengatur kategori politik di Beranda dan pencarian. **Saring hasil pencarian** menjeda filter hanya di halaman pencarian. Keduanya aktif secara default dan berlaku di keempat situs. Sakelar **Saring unggahan** menjeda semua filter.
 
+**Blokir centang biru** mati secara default, termasuk setelah pembaruan. Aktifkan di popup untuk menyembunyikan unggahan dari penulis utama yang memiliki lencana centang biru di Beranda dan hasil pencarian keempat situs. Di pencarian, **Saring hasil pencarian** juga harus aktif. Aturan ini hanya memeriksa lencana resmi penulis pada kartu yang dikenali, termasuk kartu media tanpa caption dengan tautan unggahan yang dapat dikenali. Hasil pencarian tanpa informasi penulis, centang emas atau abu-abu di X, dan lencana dalam kutipan tidak memicu aturan ini.
+
 Di Beranda dan hasil pencarian, satu kata utuh dari daftar umpatan sudah cukup untuk menyembunyikan unggahan. Daftar mencakup *goblok*, *tolol*, *brengsek*, *anjing*, dan *monyet*, termasuk pemakaian harfiah pada unggahan tentang hewan. Riwayat menampilkan alasan **Umpatan** dan kata yang cocok. Pengguna tetap bisa mengetik istilah tersebut di kotak pencarian.
 
-Hasil berupa kisi foto tanpa caption tetap tampil. Konten bergambar atau bervideo dinilai dari teks unggahan yang menyertainya. Pesan, komentar, profil, halaman unggahan individual, dan pemutar Reels berada di luar cakupan filter.
+Aturan ragebait, politik, dan umpatan menilai gambar atau video dari teks unggahan yang menyertainya. Pesan, komentar, profil, halaman unggahan individual, dan pemutar Reels berada di luar cakupan filter.
 
 Filter ragebait sengaja sensitif. Sindiran halus bisa lolos dan candaan dengan gaya provokatif bisa tersembunyi. Pemfilteran tidak memberikan jaminan tentang pencatatan tayangan oleh X.
 
 ## Jumlah dan riwayat blokir
 
 Klik ikon **Anti-Ragebait** untuk melihat total gabungan unggahan unik yang diblokir serta 50 entri terbaru. Entri mencantumkan situs, akun jika tersedia, waktu pemblokiran, alasan, dan cuplikan yang terbuka saat entri dipilih. Riwayat dari versi sebelumnya diberi label **X**.
+
+Riwayat menampilkan **Centang biru** jika lencana menjadi alasan pemblokiran. Unggahan yang sama hanya dihitung sekali saat muncul di Beranda dan pencarian atau saat sakelar dinyalakan lagi.
 
 Sematkan ikon **Anti-Ragebait** di toolbar Chrome untuk melihat total tanpa membuka popup. Ikon menampilkan `999+` mulai dari 1.000 unggahan. Arahkan kursor ke ikon atau buka popup untuk melihat angka lengkap.
 

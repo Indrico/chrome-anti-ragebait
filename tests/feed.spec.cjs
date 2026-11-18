@@ -5,10 +5,11 @@ const { test, expect, chromium } = require('@playwright/test');
 const extension = path.resolve(__dirname, '../extension');
 const blockedText = 'Lu emang clown. Cry harder.';
 const normalText = 'Saya tidak setuju dengan hasil survei karena sampelnya kecil.';
-const makePost = (id, body, quote = '', statusId = null) =>
+const makePost = (id, body, quote = '', statusId = null, badge) =>
   `<div data-testid="cellInnerDiv" id="${id}">
     <article data-testid="tweet">
-      <div data-testid="tweetText" lang="id">${body}</div>
+      ${badge === undefined ? '' : `<div data-testid="User-Name"><a href="/${id}">${id}</a><span data-test-badge>${badge}</span></div>`}
+      ${body ? `<div data-testid="tweetText" lang="id">${body}</div>` : ''}
       ${quote ? `<div role="link">
         <a href="/kutipan/status/999"><time>Hari ini</time></a>
         <div data-testid="tweetText" lang="id">${quote}</div>
@@ -82,9 +83,9 @@ async function openPopup() {
 const metaSites = [
   {
     name: 'Facebook', host: 'www.facebook.com', search: '/search/posts/?q=goblok', unsupported: '/messages/t/4',
-    card: (name, text, id, { search, quote, comment } = {}) => `
+    card: (name, text, id, { search, quote, comment, badge = '' } = {}) => `
       <div role="article" id="${name}">
-        <header><strong>${name}</strong></header>
+        <header><strong>${name}</strong><span data-test-badge>${badge}</span></header>
         <a href="${search ? '/permalink.php?story_fbid=' + id + '&id=75' : '/' + name + '/posts/' + id}"><time>Hari ini</time></a>
         <div data-ad-comet-preview="message" data-test-body>${text}</div>
         ${quote ? `<blockquote><div role="article"><div data-ad-preview="message" data-test-quote>${quote}</div></div></blockquote>` : ''}
@@ -94,10 +95,13 @@ const metaSites = [
   },
   {
     name: 'Instagram', host: 'www.instagram.com', search: '/explore/search/keyword/?q=goblok', unsupported: '/direct/inbox/',
-    card: (name, text, id, { search, comment } = {}) => search
+    card: (name, text, id, { search, comment, badge } = {}) => search && badge === undefined
       ? `<a id="${name}" href="/${name}/p/${id}/"><figure><img alt="Foto"><figcaption data-test-body>${text}</figcaption></figure></a>`
       : `<article id="${name}">
-        <header><a href="/${name}/">${name}</a><a href="/p/${id}/"><time>Hari ini</time></a></header>
+        <${search ? 'div' : 'header'}>
+          <a href="/${name}/">${name}</a><span data-test-badge>${badge ?? ''}</span>
+          <a href="/p/${id}/"><time>Hari ini</time></a>
+        </${search ? 'div' : 'header'}>
         <div><h2><a href="/${name}/">${name}</a></h2><span dir="auto" data-test-body>${text}</span></div>
         ${comment ? `<ul data-testid="comments"><li><span dir="auto">${comment}</span></li></ul>` : ''}
         <button type="button">Suka</button>
@@ -105,9 +109,9 @@ const metaSites = [
   },
   {
     name: 'Threads', host: 'www.threads.com', search: '/search?q=goblok', unsupported: '/@contoh/post/101',
-    card: (name, text, id, { quote, comment } = {}) => `
+    card: (name, text, id, { quote, comment, badge = '' } = {}) => `
       <div data-pressable-container="true" id="${name}">
-        <a href="/@${name}"><span dir="auto">${name}</span></a>
+        <div><a href="/@${name}"><span dir="auto">${name}</span></a><span data-test-badge>${badge}</span></div>
         <a href="/@${name}/post/${id}?xmt=demo"><time>Hari ini</time></a>
         <div dir="auto" data-test-body>${text}</div>
         ${quote ? `<blockquote><div data-pressable-container="true"><a href="/@kutipan/post/909"><time>Hari ini</time></a><div dir="auto" data-test-quote>${quote}</div></div></blockquote>` : ''}
@@ -595,4 +599,149 @@ test('riwayat menyimpan 50 entri terbaru tanpa mengurangi total atau menghitung 
   await popup.reload();
   await expect(count).toHaveText('55 unggahan unik diblokir');
   await expect(entries).toHaveCount(50);
+});
+
+const xBlueBadge = '<svg data-testid="icon-verified" style="color: #1d9bf0; fill: currentColor"><g><path/></g></svg>';
+const metaBadge = (label, element = 'svg') => `<${element} aria-label="${label}"></${element}>`;
+const badgeSites = [
+  {
+    name: 'X', host: 'x.com', home: '/home', search: '/search?q=agenda', badge: xBlueBadge,
+    card: (name, text, id, badge) => makePost(name, text, '', id, badge),
+  },
+  ...metaSites.map((site) => ({
+    ...site, home: '/',
+    badge: site.name === 'Facebook' ? metaBadge('Verified Account', 'i') : metaBadge('Terverifikasi'),
+    card: (name, text, id, badge, search) => site.card(name, text, id, { badge, search }),
+  })),
+];
+
+async function openBadgeFeed(site, pathname, cards) {
+  const url = `https://${site.host}${pathname}`;
+  const page = await context.newPage();
+  await page.route(url, (route) => route.fulfill({
+    contentType: 'text/html; charset=utf-8',
+    body: `<!doctype html><html lang="id"><main data-testid="primaryColumn">${cards}</main></html>`,
+  }));
+  await page.goto(url);
+  return page;
+}
+
+for (const site of badgeSites) {
+  test(`${site.name} menyaring centang biru di Beranda dan pencarian setelah sakelar aktif`, async () => {
+    const open = (pathname) => {
+      const search = pathname === site.search;
+      const post = (name, caption, id, badge = site.badge) => site.card(name, caption, id, badge, search);
+      return openBadgeFeed(site, pathname,
+        post('biru', normalText, 301) + post('media', '', 302) + post('umpatan', 'Goblok!', 303) +
+        post('terlambat', normalText, 304, '') + post('biasa', normalText, 305, ''),
+      );
+    };
+    const [home, search] = await Promise.all([open(site.home), open(site.search)]);
+    const popup = await openPopup();
+    const blue = popup.getByRole('switch', { name: 'Blokir centang biru' });
+    const searchToggle = popup.getByRole('switch', { name: 'Saring hasil pencarian' });
+    const master = popup.getByRole('switch', { name: 'Saring unggahan' });
+    const count = popup.locator('#blocked-count');
+    const blueEntries = popup.locator('.entry-label').filter({ hasText: 'Centang biru' });
+    const worker = context.serviceWorkers()[0] ?? await context.waitForEvent('serviceworker');
+    await expect(blue).toBeEnabled();
+    await expect(blue).not.toBeChecked();
+    await expect(count).toHaveText('1 unggahan unik diblokir');
+    for (const page of [home, search]) {
+      await expect(page.locator('#biru')).toBeVisible();
+      await expect(page.locator('#media')).toBeVisible();
+    }
+
+    await blue.check();
+    for (const page of [home, search]) {
+      await expect(page.locator('#biru')).toHaveCSS('display', 'none');
+      await expect(page.locator('#media')).toHaveCSS('display', 'none');
+      await expect(page.locator('#biasa')).toBeVisible();
+    }
+    await expect(count).toHaveText('3 unggahan unik diblokir');
+    await expect(blueEntries).toHaveCount(2);
+    await expect(popup.locator('.entry-label').filter({ hasText: 'Umpatan (goblok)' })).toBeVisible();
+    const mediaEntry = popup.locator('details').filter({ hasText: 'media · Centang biru' });
+    await mediaEntry.locator('summary').click();
+    await expect(mediaEntry.locator('.entry-excerpt')).toHaveText('Unggahan tanpa teks.');
+
+    await searchToggle.uncheck();
+    await expect(search.locator('#biru')).toBeVisible();
+    await expect(home.locator('#biru')).toHaveCSS('display', 'none');
+    await expect(blue).toBeChecked();
+    await searchToggle.check();
+    await expect(search.locator('#biru')).toHaveCSS('display', 'none');
+
+    await master.uncheck();
+    await expect(home.locator('#biru')).toBeVisible();
+    await expect(search.locator('#biru')).toBeVisible();
+    await master.check();
+    await expect(home.locator('#biru')).toHaveCSS('display', 'none');
+    await expect(search.locator('#biru')).toHaveCSS('display', 'none');
+
+    const late = home.locator('#terlambat');
+    await late.locator('[data-test-badge]').evaluate((element, badge) => { element.innerHTML = badge; }, site.badge);
+    await expect(late).toHaveCSS('display', 'none');
+    const removeSignal = site.name === 'X' ? ['path', 'fill', '#829aab'] : ['[aria-label]', 'aria-label', 'Ikon'];
+    await late.locator(`[data-test-badge] ${removeSignal[0]}`).evaluate((element, [attr, value]) => {
+      element.setAttribute(attr, value);
+    }, removeSignal.slice(1));
+    await expect(late).toBeVisible();
+    await expect(count).toHaveText('4 unggahan unik diblokir');
+    await expect.poll(() => worker.evaluate(() => chrome.action.getBadgeText({}))).toBe('4');
+
+    await Promise.all([search.reload(), popup.reload()]);
+    await expect(blue).toBeChecked();
+    await expect(search.locator('#biru')).toHaveCSS('display', 'none');
+    await blue.uncheck();
+    for (const page of [home, search]) {
+      await expect(page.locator('#biru')).toBeVisible();
+      await expect(page.locator('#media')).toBeVisible();
+      await expect(page.locator('#umpatan')).toHaveCSS('display', 'none');
+    }
+    await expect(count).toHaveText('4 unggahan unik diblokir');
+  });
+}
+
+test('X menilai centang biru milik penulis utama pada kartu dengan identitas yang dapat dicatat', async () => {
+  const popup = await openPopup();
+  const worker = context.serviceWorkers()[0] ?? await context.waitForEvent('serviceworker');
+  await worker.evaluate(() => chrome.storage.local.set({ enabled: true, politicsEnabled: false, searchEnabled: true }));
+  await popup.reload();
+  const blue = popup.getByRole('switch', { name: 'Blokir centang biru' });
+  await expect(blue).not.toBeChecked();
+  await expect(popup.getByRole('switch', { name: 'Blokir politik' })).not.toBeChecked();
+  await blue.check();
+
+  const site = badgeSites[0];
+  const page = await openBadgeFeed(site, site.home,
+    makePost('emas', normalText, '', 401, '<svg data-testid="icon-verified"><path fill="#d18800"/></svg>') +
+    makePost('abu', normalText, '', 402, '<svg data-testid="icon-verified"><path fill="#829aab"/></svg>') +
+    makePost('emoji', 'Terverifikasi ✅', '', 403, '<svg><path fill="#1d9bf0"/></svg>') +
+    makePost('kutipan', normalText, `<span data-testid="User-Name">${xBlueBadge}</span>Catatan.`, 404, '') +
+    makePost('caption', `Catatan. <span data-testid="User-Name">${xBlueBadge}</span>`, '', 405, '') +
+    makePost('tanpaid', '', '', null, xBlueBadge) +
+    makePost('biru', normalText, '', 406, '<svg data-testid="icon-verified"><path fill="#1d9bf0"/></svg>'),
+  );
+  await expect(page.locator('#biru')).toHaveCSS('display', 'none');
+  for (const id of ['emas', 'abu', 'emoji', 'kutipan', 'caption', 'tanpaid']) {
+    await expect(page.locator(`#${id}`)).toBeVisible();
+  }
+  await expect(popup.locator('#blocked-count')).toHaveText('1 unggahan unik diblokir');
+});
+
+test('Facebook mengabaikan lencana di kutipan, komentar, dan isi unggahan', async () => {
+  const popup = await openPopup();
+  await popup.getByRole('switch', { name: 'Blokir centang biru' }).check();
+  const site = metaSites.find(({ name }) => name === 'Facebook');
+  const badge = metaBadge('Akun Terverifikasi', 'i');
+  const page = await openBadgeFeed(site, '/',
+    site.card('kutipan', normalText, '501', { quote: `<header><strong>Kutipan</strong>${badge}</header>` }) +
+    site.card('komentar', normalText, '502', { comment: `<header><strong>Komentar</strong>${badge}</header>` }) +
+    site.card('caption', `Catatan hari ini. ${badge}`, '503') +
+    site.card('penulis', normalText, '504', { badge }),
+  );
+  await expect(page.locator('#penulis')).toHaveCSS('display', 'none');
+  for (const id of ['kutipan', 'komentar', 'caption']) await expect(page.locator(`#${id}`)).toBeVisible();
+  await expect(popup.locator('#blocked-count')).toHaveText('1 unggahan unik diblokir');
 });

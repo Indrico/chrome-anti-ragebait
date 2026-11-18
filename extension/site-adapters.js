@@ -7,15 +7,25 @@ const feedAdapters = (() => {
   const xCard = '[data-testid="cellInnerDiv"]';
   const xPost = 'article[data-testid="tweet"]';
   const xText = '[data-testid="tweetText"]';
+  const xAuthor = '[data-testid="User-Name"]';
+  const xBadge = 'svg[data-testid="icon-verified"]';
+  const xBlue = 'rgb(29, 155, 240)';
+  const metaBadgeIcon = 'svg, i, [role="img"]';
+  const metaBadge = `:is(${metaBadgeIcon}):is([aria-label="Verified" i], [aria-label="Verified Account" i], ` +
+    '[aria-label="Terverifikasi" i], [aria-label="Akun Terverifikasi" i])';
+  const metaBadgeAttributes = ['aria-label'];
   const facebookArticle = 'article, [role="article"], [data-testid="feed_story"]';
   const facebookCard = `${facebookArticle}, [data-pagelet^="FeedUnit_"]:not(:has(${facebookArticle}))`;
   const facebookText = '[data-ad-preview="message"], [data-ad-comet-preview="message"], ' +
     '[data-ad-rendering-role="story_message"], [data-testid="post_message"]';
+  const facebookAuthor = 'header strong, [data-testid="story_author_link"], h2 a, h3 a, h4 a';
+  const facebookLink = 'a[href*="/posts/"], a[href*="/permalink"], a[href*="/story.php"]';
   const instagramArticle = 'article, [role="article"]';
   const instagramCaption = 'figcaption, [data-caption], [data-testid="caption"], [data-testid="post-caption"]';
   const instagramLink = 'a[href*="/p/"], a[href*="/reel/"]';
   const instagramCard = `${instagramArticle}, :is(${instagramLink}):has(${instagramCaption}):not(:is(${instagramArticle}) *)`;
   const threadsLink = 'a[href*="/post/"], a[href^="/t/"]';
+  const threadsProfile = 'a[href^="/@"], a[href*="threads.com/@"]';
   const threadsCard = `article, [role="article"], [data-pressable-container="true"]:has(${threadsLink})`;
   const threadsText = '[data-testid="post-text"], [data-testid="thread-text"], [data-text-post-text]';
 
@@ -61,7 +71,32 @@ const feedAdapters = (() => {
     return links.filter((link) => !link.closest(`${excluded}, ${quote}`));
   }
 
-  function readX(card) {
+  function isPrimaryContent(node, card, cardSelector) {
+    return node.closest(cardSelector) === card && !node.closest(`${excluded}, ${quote}, [hidden]`);
+  }
+
+  function hasMetaBlueCheck(author, card, cardSelector, bodySelector) {
+    // Check the author name and nearby wrappers, stopping before the post body.
+    let row = author;
+    for (let depth = 0; row && row !== card && depth <= 4; depth += 1, row = row.parentElement) {
+      if (row.matches(bodySelector) || row.querySelector(bodySelector)) break;
+      const badges = row.querySelectorAll(metaBadge);
+      if ([...badges].some((badge) => isPrimaryContent(badge, card, cardSelector))) return true;
+      if (row.matches('header')) break;
+    }
+    return false;
+  }
+
+  function hasXBlueCheck(post, card) {
+    const author = [...post.querySelectorAll(xAuthor)].find((node) =>
+      isPrimaryContent(node, card, xCard) && node.closest(xPost) === post && !node.closest(`div[role="link"], ${xText}`),
+    );
+    const badge = author?.querySelector(xBadge);
+    if (!badge || badge.querySelector('linearGradient, radialGradient')) return false;
+    return [...badge.querySelectorAll('path')].some((path) => getComputedStyle(path).fill === xBlue);
+  }
+
+  function readX(card, readBlueCheck) {
     const posts = [...card.querySelectorAll(xPost)].filter((post) =>
       post.closest(xCard) === card && !post.parentElement.closest(xPost),
     );
@@ -79,8 +114,8 @@ const feedAdapters = (() => {
     const texts = [...post.querySelectorAll(xText)].map((text) => ({
       rawText: text.textContent,
       language: text.getAttribute('lang') ?? '',
-    }));
-    return { ...identity, texts };
+    })).filter(({ rawText }) => rawText.trim());
+    return { ...identity, texts, blueCheck: readBlueCheck && hasXBlueCheck(post, card) };
   }
 
   function facebookPostId(url) {
@@ -91,15 +126,15 @@ const feedAdapters = (() => {
     return /^[a-z0-9_]+$/iu.test(id ?? '') ? id : null;
   }
 
-  function readFacebook(card) {
+  function readFacebook(card, readBlueCheck) {
     const bodies = [...card.querySelectorAll(facebookText)].filter((body) =>
       belongsToCard(body, card, facebookCard),
     );
     const texts = textParts(bodies);
-    if (!texts.length) return null;
+    if (!texts.length && !readBlueCheck) return null;
 
     const ids = new Set();
-    for (const link of linksIn(card, 'a[href*="/posts/"], a[href*="/permalink"], a[href*="/story.php"]')) {
+    for (const link of linksIn(card, facebookLink)) {
       const url = postLink(link, 'facebook.com');
       if (!url || url.searchParams.has('comment_id') || url.searchParams.has('reply_comment_id')) continue;
       const id = facebookPostId(url);
@@ -107,9 +142,12 @@ const feedAdapters = (() => {
     }
     if (ids.size > 1) return null;
     const [id] = ids;
-    const author = card.querySelector('header strong, [data-testid="story_author_link"], h2 a, h3 a, h4 a')
-      ?.textContent.trim().slice(0, 100);
-    return { id, author, texts };
+    const authorNode = [...card.querySelectorAll(facebookAuthor)].find((node) =>
+      isPrimaryContent(node, card, facebookCard) && !node.closest(facebookText),
+    );
+    const author = authorNode?.textContent.trim().slice(0, 100);
+    const blueCheck = readBlueCheck && hasMetaBlueCheck(authorNode, card, facebookCard, facebookText);
+    return { id, author, texts, blueCheck };
   }
 
   function instagramAuthor(link) {
@@ -118,7 +156,7 @@ const feedAdapters = (() => {
     return handle && link.textContent.trim().toLowerCase() === handle.toLowerCase() ? handle : null;
   }
 
-  function readInstagram(card) {
+  function readInstagram(card, readBlueCheck) {
     const posts = new Map();
     for (const link of linksIn(card, instagramLink)) {
       const post = postLink(link, 'instagram.com')?.pathname.match(/^\/(?:(?<author>[a-z0-9._]+)\/)?(?:p|reel)\/(?<id>[a-z0-9_-]+)\/?$/iu);
@@ -148,10 +186,16 @@ const feedAdapters = (() => {
       }
     }
     const texts = textParts(candidates.filter((node) => belongsToCard(node, card, instagramCard)));
-    return texts.length ? { id: identity.id, author, texts } : null;
+    const authorNode = readBlueCheck && handleLinks.find((link) =>
+      isPrimaryContent(link, card, instagramCard) && instagramAuthor(link)?.toLowerCase() === author?.toLowerCase() &&
+      (card.contains(link.closest('header')) ||
+        (!link.closest('ul, li, h2') && !candidates.some((caption) => caption.contains(link)))),
+    );
+    const blueCheck = readBlueCheck && hasMetaBlueCheck(authorNode, card, instagramCard, instagramCaption);
+    return { id: identity.id, author, texts, blueCheck };
   }
 
-  function readThreads(card) {
+  function readThreads(card, readBlueCheck) {
     const posts = new Map();
     for (const link of linksIn(card, threadsLink)) {
       const post = postLink(link, 'threads.com')?.pathname.match(/^\/(?:@(?<author>[a-z0-9._]+)\/post|t)\/(?<id>[a-z0-9_-]+)\/?$/iu);
@@ -175,25 +219,36 @@ const feedAdapters = (() => {
       );
     }
     const texts = textParts(nodes.filter((node) => belongsToCard(node, card, threadsCard)));
-    return texts.length ? { id: identity.id, author: identity.author, texts } : null;
+    const authorNode = readBlueCheck && identity.author && linksIn(card, threadsProfile).find((link) =>
+      isPrimaryContent(link, card, threadsCard) &&
+      postLink(link, 'threads.com')?.pathname.replace(/\/$/u, '').toLowerCase() === `/@${identity.author.toLowerCase()}`,
+    );
+    const blueCheck = readBlueCheck && hasMetaBlueCheck(authorNode, card, threadsCard, threadsText);
+    return { id: identity.id, author: identity.author, texts, blueCheck };
   }
 
   return {
     'x.com': {
       site: 'x', scope: '[data-testid="primaryColumn"]', card: xCard, content: `${xPost}, ${xText}`,
+      badgeContent: `${xAuthor}, ${xBadge}`, badgeTarget: `${xAuthor}, ${xAuthor} *`,
+      badgeAttributes: ['class', 'style', 'fill', 'color'],
       surface: (path) => surface(path, /^\/home$/u, /^\/search$/u), read: readX,
     },
     'facebook.com': {
       site: 'facebook', scope: main, card: facebookCard, content: facebookText, excluded,
+      badgeContent: `${facebookAuthor}, ${facebookLink}, ${metaBadge}`, badgeTarget: metaBadgeIcon,
+      badgeAttributes: metaBadgeAttributes,
       surface: (path) => surface(path, /^\/(?:home\.php)?$/u, /^\/search(?:\/(?:top|posts))?$/u), read: readFacebook,
     },
     'instagram.com': {
       site: 'instagram', scope: main, card: instagramCard, excluded,
       content: `${instagramCaption}, h1, [dir="auto"], ._a9zs, ${instagramLink}`,
+      badgeContent: `header, a[href], ${metaBadge}`, badgeTarget: metaBadgeIcon, badgeAttributes: metaBadgeAttributes,
       surface: (path) => surface(path, /^\/$/u, /^\/explore\/search\/keyword$/u), read: readInstagram,
     },
     'threads.com': {
       site: 'threads', card: threadsCard, excluded, content: `${threadsText}, [dir="auto"], ${threadsLink}`,
+      badgeContent: `${threadsProfile}, ${metaBadge}`, badgeTarget: metaBadgeIcon, badgeAttributes: metaBadgeAttributes,
       surface: (path) => surface(path, /^\/(?:following)?$/u, /^\/search$/u), read: readThreads,
     },
   };
