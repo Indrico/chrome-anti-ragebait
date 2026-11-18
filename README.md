@@ -1,6 +1,6 @@
 # Chrome Anti-Ragebait
 
-Ekstensi Chrome desktop yang otomatis menyembunyikan dugaan ragebait dan unggahan dengan istilah politik dari *For You* dan *Following* di Beranda X. Aturan bawaan berfokus pada bahasa Indonesia, slang, serta campuran Indonesia–Inggris.
+Ekstensi Chrome desktop yang otomatis menyaring dugaan ragebait, istilah politik, dan umpatan dari *For You* dan *Following* di Beranda X. Filter umpatan juga berlaku di hasil pencarian. Aturan bawaan berfokus pada bahasa Indonesia, slang, serta campuran Indonesia–Inggris.
 
 ## Pemasangan di Chrome
 
@@ -15,7 +15,11 @@ Untuk memperbarui pemasangan yang sudah ada, salin isi ZIP baru ke folder eksten
 
 ## Cakupan filter
 
-Filter membaca teks unggahan dan kutipan yang tampil di Beranda. Istilah politik bawaan mencakup kata dan frasa seperti *pemilu*, *pilkada*, *DPR*, dan *partai politik*. Unggahan yang cocok disembunyikan juga saat nadanya netral. Konten bergambar atau bervideo dinilai dari teks unggahan yang menyertainya. Profil, pencarian, dan halaman utas dapat dibuka seperti biasa.
+Filter membaca teks unggahan dan kutipan. Di Beranda, daftar politik bawaan mencakup kata dan frasa seperti *pemilu*, *pilkada*, *DPR*, dan *partai politik*. Unggahan yang cocok disembunyikan juga saat nadanya netral.
+
+Di Beranda dan hasil pencarian, satu umpatan dari daftar bawaan, seperti *goblok*, *tolol*, atau *brengsek*, cukup untuk menyembunyikan unggahan. Riwayat menampilkan alasan **Umpatan** dan kata yang cocok. Pengguna tetap bisa mengetik istilah tersebut di kotak pencarian.
+
+Konten bergambar atau bervideo dinilai dari teks unggahan yang menyertainya. Profil dan halaman utas dapat dibuka seperti biasa.
 
 Filter ragebait sengaja sensitif. Sindiran halus bisa lolos dan candaan dengan gaya provokatif bisa tersembunyi. Pemfilteran tidak memberikan jaminan tentang pencatatan tayangan oleh X.
 
@@ -35,7 +39,7 @@ npx playwright install chromium
 npm test
 ```
 
-`npm run test:rules` menjalankan pengujian aturan saja. Pengujian Chromium memuat ekstensi sungguhan pada halaman timeline tiruan, termasuk scroll, navigasi, sakelar lintas tab, dan riwayat blokir.
+`npm run test:rules` menjalankan pengujian aturan saja. Pengujian Chromium memuat ekstensi sungguhan pada halaman tiruan Beranda dan pencarian, termasuk scroll, navigasi, sakelar lintas tab, dan riwayat blokir.
 
 Dalam pemeriksaan tambahan pada 12 contoh sintetis berlabel, 9 sesuai dengan label awal. Contoh ini membantu menemukan batas aturan. Akurasi pada feed X belum diukur.
 

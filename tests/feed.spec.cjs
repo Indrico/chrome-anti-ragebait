@@ -134,7 +134,7 @@ test('kartu baru dan kartu daur ulang diperiksa saat scroll', async () => {
   await expect(page.locator('#unknown')).toHaveCSS('display', 'none');
 });
 
-test('navigasi tanpa muat ulang membatasi filter ke Beranda', async () => {
+test('navigasi tanpa muat ulang membatasi filter Beranda di luar halaman unggahan', async () => {
   const page = await context.newPage();
   await page.goto('https://x.com/akun/status/1');
   await expect(page.locator('#blocked')).toBeVisible();
@@ -156,7 +156,7 @@ test('sakelar popup berlaku di semua tab dan bertahan setelah halaman dimuat ula
   await expect(otherHome.locator('#blocked')).toHaveCSS('display', 'none');
 
   const popup = await openPopup();
-  const toggle = popup.getByRole('switch', { name: 'Saring Beranda X' });
+  const toggle = popup.getByRole('switch', { name: 'Saring unggahan X' });
   await expect(toggle).toBeChecked();
   await toggle.uncheck();
   await expect(home.locator('#blocked')).toBeVisible();
@@ -170,6 +170,50 @@ test('sakelar popup berlaku di semua tab dan bertahan setelah halaman dimuat ula
   await toggle.check();
   await expect(home.locator('#blocked')).toHaveCSS('display', 'none');
   await expect(otherHome.locator('#blocked')).toHaveCSS('display', 'none');
+});
+
+test('umpatan diblokir di hasil pencarian dan Beranda serta tercatat di popup', async () => {
+  const page = await context.newPage();
+  const searchUrl = 'https://x.com/search?q=goblok&src=typed_query';
+  const searchFixture = fixture.replace('<div id="timeline">',
+    `<input aria-label="Cari di X" value="goblok">
+    <div id="timeline">${makePost('umpatan', 'Goblok!', '', 106)}`,
+  );
+  await page.route((url) => url.pathname === '/search', (route) => route.fulfill({
+    contentType: 'text/html; charset=utf-8',
+    body: searchFixture,
+  }));
+  await page.goto(searchUrl);
+  expect(await page.evaluate(() => window.initialPostVisibility)).toBe('hidden');
+  await expect(page.getByRole('textbox', { name: 'Cari di X' })).toHaveValue('goblok');
+  await expect(page.locator('#umpatan')).toHaveCSS('display', 'none');
+  await expect(page.locator('#normal')).toBeVisible();
+  await expect(page.locator('#politics')).toBeVisible();
+  await expect(page.locator('#blocked')).toBeVisible();
+
+  const quoted = makePost('kutipUmpatan', normalText, 'Dia bilang tolol.', 107);
+  await page.locator('#timeline').evaluate((timeline, html) => timeline.insertAdjacentHTML('beforeend', html), quoted);
+  await expect(page.locator('#kutipUmpatan')).toHaveCSS('display', 'none');
+
+  const popup = await openPopup();
+  await expect(popup.locator('#blocked-count')).toHaveText('2 unggahan unik diblokir');
+  await expect(popup.getByText('@umpatan · Umpatan (goblok)', { exact: true })).toBeVisible();
+  await expect(popup.getByText('@kutipUmpatan · Umpatan (tolol)', { exact: true })).toBeVisible();
+
+  await page.evaluate(() => history.pushState({}, '', '/home'));
+  await expect(page.locator('#politics')).toHaveCSS('display', 'none');
+  await expect(page.locator('#umpatan')).toHaveCSS('display', 'none');
+  await expect(popup.locator('#blocked-count')).toHaveText('5 unggahan unik diblokir');
+  await page.evaluate(() => history.back());
+  await expect(page).toHaveURL(searchUrl);
+  await expect(page.locator('#politics')).toBeVisible();
+  await expect(page.locator('#umpatan')).toHaveCSS('display', 'none');
+
+  const toggle = popup.getByRole('switch', { name: 'Saring unggahan X' });
+  await toggle.uncheck();
+  await expect(page.locator('#umpatan')).toBeVisible();
+  await toggle.check();
+  await expect(page.locator('#umpatan')).toHaveCSS('display', 'none');
 });
 
 test('riwayat terisi otomatis, menjelaskan alasan, dan mencatat setiap ID sekali lintas tab', async () => {

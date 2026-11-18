@@ -7,6 +7,7 @@ const { runInNewContext } = require('node:vm');
 const script = readFileSync(join(__dirname, '../extension/rules.js'), 'utf8');
 const classify = runInNewContext(script + '\nisIndonesianRagebait;');
 const classifyPolitics = runInNewContext(script + '\n(text) => findPoliticalTerm(normalizePostText(text));');
+const classifyProfanity = runInNewContext(script + '\n(text) => findProfanityTerm(normalizePostText(text));');
 
 const cases = [
   ['ajakan berantem', 'Ayo ribut di kolom komentar.', '', true],
@@ -18,7 +19,7 @@ const cases = [
   ['tantangan dengan penekanan', 'Berani bantah???', 'id', true],
   ['kritik kebijakan', 'Saya tidak setuju dengan metode survei karena sampelnya terlalu kecil.', 'id', false],
   ['protes dengan penekanan', 'KENAPA TARIF NAIK?!? Ini memberatkan kami.', 'id', false],
-  ['umpatan tunggal', 'Goblok!', 'id', false],
+  ['umpatan tunggal tidak memicu aturan ragebait', 'Goblok!', 'id', false],
   ['ajakan diskusi', 'Yang gak setuju, boleh kasih sumber dan alasannya.', 'id', false],
   ['ajakan diskusi dengan penekanan', 'Yang nggak setuju??? Boleh kasih sumbernya?', 'id', false],
   ['penyebutan netral', 'Semua pendukung sudah tiba di stadion.', 'id', false],
@@ -46,4 +47,19 @@ const politicalCases = [
 
 for (const [name, text, expected] of politicalCases) {
   test(name, () => assert.equal(classifyPolitics(text), expected));
+}
+
+const profanityCases = [
+  ['umpatan tunggal', 'Goblok!', 'goblok'],
+  ['variasi ejaan', 'Goblog.', 'goblog'],
+  ['hashtag umpatan dengan kapital', '#TOLOL', 'tolol'],
+  ['imbuhan umpatan', 'Bajinganlah.', 'bajingan'],
+  ['aksara lebar dan karakter tak terlihat', 'ＧＯＢ\u200bＬＯＫ', 'goblok'],
+  ['bagian dari token lain', 'Arsip antitolol123.', null],
+  ['umpatan hanya di URL atau nama akun', 'Baca https://contoh.id/goblok dan @tolol.', null],
+  ['nama hewan', 'Kami mengadopsi anjing.', null],
+];
+
+for (const [name, text, expected] of profanityCases) {
+  test(name, () => assert.equal(classifyProfanity(text), expected));
 }

@@ -11,7 +11,7 @@
 
   let enabled = true;
   let settingsReady = false;
-  let active = false;
+  let activePath = null;
   let frameId = 0;
   const observer = new MutationObserver(handleMutations);
 
@@ -36,19 +36,22 @@
     for (const text of textNodes) {
       const rawText = text.textContent;
       const normalizedText = normalizePostText(rawText);
-      const term = findPoliticalTerm(normalizedText);
-      if (term || isIndonesianRagebait(rawText, text.getAttribute('lang') ?? '')) {
-        const { id, author } = getPostIdentity(post);
-        const preview = normalizedText.slice(0, 180);
-        return {
-          id: id ?? null,
-          author: author ?? null,
-          reason: term ? 'politics' : 'ragebait',
-          term,
-          excerpt: normalizedText.length > preview.length ? `${preview}…` : preview,
-          fallbackText: id ? null : textNodes.map((node) => normalizePostText(node.textContent)).join('\n').slice(0, 4096),
-        };
-      }
+      const profanity = findProfanityTerm(normalizedText);
+      const politics = activePath === '/home' && !profanity ? findPoliticalTerm(normalizedText) : null;
+      const ragebait = activePath === '/home' && !profanity && !politics &&
+        isIndonesianRagebait(rawText, text.getAttribute('lang') ?? '');
+      if (!profanity && !politics && !ragebait) continue;
+
+      const { id, author } = getPostIdentity(post);
+      const preview = normalizedText.slice(0, 180);
+      return {
+        id: id ?? null,
+        author: author ?? null,
+        reason: profanity ? 'profanity' : politics ? 'politics' : 'ragebait',
+        term: profanity ?? politics,
+        excerpt: normalizedText.length > preview.length ? `${preview}…` : preview,
+        fallbackText: id ? null : textNodes.map((node) => normalizePostText(node.textContent)).join('\n').slice(0, 4096),
+      };
     }
     return null;
   }
@@ -132,29 +135,30 @@
   function refreshActivation() {
     const root = document.documentElement;
     if (!root) return;
-    const onHome = location.pathname === '/home' || location.pathname === '/home/';
-    const shouldActivate = enabled && onHome;
-    if (active === shouldActivate) return;
-
-    active = shouldActivate;
-    root.toggleAttribute(activeAttribute, active);
-    if (active) {
-      observer.observe(root, {
-        childList: true,
-        subtree: true,
-        characterData: true,
-        attributeFilter: ['lang', 'data-testid'],
-        attributeOldValue: true,
-      });
-      root.querySelectorAll(`${columnSelector} ${cellSelector}`).forEach(queueCell);
-      return;
-    }
+    const path = location.pathname.replace(/\/$/u, '');
+    const nextPath = enabled && (path === '/home' || path === '/search') ? path : null;
+    if (activePath === nextPath) return;
 
     observer.disconnect();
     cancelAnimationFrame(frameId);
     frameId = 0;
     pendingCells.clear();
-    root.querySelectorAll(`[${stateAttribute}]`).forEach((cell) => cell.removeAttribute(stateAttribute));
+
+    activePath = nextPath;
+    root.toggleAttribute(activeAttribute, activePath !== null);
+    if (!activePath) {
+      root.querySelectorAll(`[${stateAttribute}]`).forEach((cell) => cell.removeAttribute(stateAttribute));
+      return;
+    }
+
+    observer.observe(root, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributeFilter: ['lang', 'data-testid'],
+      attributeOldValue: true,
+    });
+    root.querySelectorAll(`${columnSelector} ${cellSelector}`).forEach(queueCell);
   }
 
   if (document.documentElement) {

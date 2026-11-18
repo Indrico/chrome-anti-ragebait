@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Chrome Anti-Ragebait",
-  "version": "0.2.0",
-  "description": "Sembunyikan ragebait dan unggahan dengan istilah politik dari Beranda X.",
+  "version": "0.3.0",
+  "description": "Saring ragebait, istilah politik, dan umpatan dari unggahan di X.",
   "minimum_chrome_version": "120",
   "permissions": ["storage"],
   "background": { "service_worker": "background.js" },

@@ -6,6 +6,21 @@ function normalizePostText(text) {
     .trim();
 }
 
+const wordCharacter = '[\\p{L}\\p{N}_]';
+
+function textForWordMatch(normalizedText) {
+  return normalizedText.toLowerCase().replace(/@[a-z0-9_]+/gu, ' ');
+}
+
+const findProfanityTerm = (() => {
+  const terms = [
+    'goblok', 'goblog', 'tolol', 'bego', 'dungu', 'brengsek', 'bangsat', 'bajingan',
+    'keparat', 'sialan', 'jancok', 'jancuk', 'dancok', 'ngentot', 'kontol', 'memek',
+  ];
+  const pattern = new RegExp(`(?<!${wordCharacter})(${terms.join('|')})(?:nya|lah|mu|ku)?(?!${wordCharacter})`, 'u');
+  return (normalizedText) => textForWordMatch(normalizedText).match(pattern)?.[1] ?? null;
+})();
+
 const findPoliticalTerm = (() => {
   const terms = [
     'pemilihan umum', 'pemilihan kepala daerah', 'wakil presiden', 'partai politik',
@@ -17,12 +32,11 @@ const findPoliticalTerm = (() => {
     'parpol', 'politik', 'politikus', 'politisi', 'koalisi', 'oposisi',
     'bawaslu', 'kpu', 'dprd', 'dpr', 'mpr',
   ];
-  const wordCharacter = '[\\p{L}\\p{N}_]';
   const pattern = new RegExp(`(?<!${wordCharacter})(?:${terms.join('|')})(?!${wordCharacter})`, 'u');
   const electionHashtag = /#(pemilu|pilpres|pilkada|pileg)20\d{2}(?![\p{L}\p{N}_])/u;
 
   return (normalizedText) => {
-    const text = normalizedText.toLowerCase().replace(/@[a-z0-9_]+/gu, ' ');
+    const text = textForWordMatch(normalizedText);
     return text.match(pattern)?.[0] ?? text.match(electionHashtag)?.[1] ?? null;
   };
 })();

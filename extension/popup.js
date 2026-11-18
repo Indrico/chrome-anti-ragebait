@@ -6,6 +6,7 @@ const blockHistory = document.getElementById('block-history');
 const entryTemplate = document.getElementById('history-entry');
 const formatCount = new Intl.NumberFormat('id-ID');
 const formatTime = new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium', timeStyle: 'short' });
+const reasonLabels = { ragebait: 'Ragebait', politics: 'Politik', profanity: 'Umpatan' };
 let historyRequest = 0;
 
 function showError(message) {
@@ -43,7 +44,8 @@ function createHistoryEntry(entry) {
   const row = entryTemplate.content.firstElementChild.cloneNode(true);
   row.dataset.key = entry.key;
   const author = entry.author ? `@${entry.author}` : 'Unggahan X';
-  const reason = entry.reason === 'politics' ? `Politik (${entry.term})` : 'Ragebait';
+  const label = reasonLabels[entry.reason];
+  const reason = entry.term ? `${label} (${entry.term})` : label;
   row.querySelector('.entry-label').textContent = `${author} · ${reason}`;
   const time = row.querySelector('time');
   time.dateTime = new Date(entry.blockedAt).toISOString();
