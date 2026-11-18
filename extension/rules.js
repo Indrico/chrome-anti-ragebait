@@ -16,9 +16,38 @@ const findProfanityTerm = (() => {
   const terms = [
     'goblok', 'goblog', 'tolol', 'bego', 'dungu', 'brengsek', 'bangsat', 'bajingan',
     'keparat', 'sialan', 'jancok', 'jancuk', 'dancok', 'ngentot', 'kontol', 'memek',
+    'anjing', 'monyet', 'anjir', 'anjrit', 'anying', 'asu', 'babi', 'kampret',
+    'tai', 'bodoh', 'bejat', 'biadab',
   ];
   const pattern = new RegExp(`(?<!${wordCharacter})(${terms.join('|')})(?:nya|lah|mu|ku)?(?!${wordCharacter})`, 'u');
   return (normalizedText) => textForWordMatch(normalizedText).match(pattern)?.[1] ?? null;
+})();
+
+function normalizePoliticalName(text) {
+  return textForWordMatch(text).replace(/[‘’ʼ]/gu, "'");
+}
+
+const findPoliticalName = (() => {
+  const names = new Map();
+  for (const [name, ...aliases] of politicalNames) {
+    for (const alias of [name, ...aliases]) {
+      const normalized = normalizePoliticalName(alias);
+      names.set(normalized, name);
+      const hashtag = normalized.replace(/[^\p{L}\p{N}]/gu, '');
+      if (hashtag !== normalized) names.set(`#${hashtag}`, name);
+    }
+  }
+
+  const alternatives = [...names.keys()]
+    .sort((first, second) => second.length - first.length)
+    .map((name) => name.replace(/[.*+?^$(){}|[\]\\]/gu, '\\$&'))
+    .join('|');
+  const pattern = new RegExp(`(?<!${wordCharacter})(?:${alternatives})(?!${wordCharacter})`, 'u');
+
+  return (normalizedText) => {
+    const match = normalizePoliticalName(normalizedText).match(pattern)?.[0];
+    return names.get(match) ?? null;
+  };
 })();
 
 const findPoliticalTerm = (() => {

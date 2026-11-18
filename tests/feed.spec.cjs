@@ -256,6 +256,53 @@ test('sakelar politik berlaku lintas tab dan tersimpan terpisah dari filter lain
   await expect(popup.locator('#blocked-count')).toHaveText('5 unggahan unik diblokir');
 });
 
+test('nama politik dan perluasan umpatan memakai sakelar, riwayat, dan total yang ada', async () => {
+  const home = await context.newPage();
+  const search = await context.newPage();
+  await Promise.all([home.goto('https://x.com/home'), search.goto('https://x.com/search?q=monyet')]);
+  const posts = makePost('tokoh', 'Jokowi datang hari ini.', '', 121) +
+    makePost('kutipTokoh', 'Catatan Pemilu.', '#AniesBaswedan', 122) +
+    makePost('partai', 'PDI-P menerbitkan pernyataan.', '', 123) +
+    makePost('namaUmum', 'Joko dan Raka berangkat ke SBY.', '', 124) +
+    makePost('adopsi', 'Kami mengadopsi anjing.', '', 125) +
+    makePost('satwa', normalText, 'Seekor monyet duduk di dahan.', 126);
+  await Promise.all([home, search].map((page) =>
+    page.locator('#timeline').evaluate((timeline, html) => timeline.insertAdjacentHTML('beforeend', html), posts),
+  ));
+  for (const id of ['tokoh', 'kutipTokoh', 'partai']) {
+    await expect(home.locator(`#${id}`)).toHaveCSS('display', 'none');
+    await expect(search.locator(`#${id}`)).toBeVisible();
+  }
+  for (const page of [home, search]) {
+    await expect(page.locator('#namaUmum')).toBeVisible();
+    await expect(page.locator('#adopsi')).toHaveCSS('display', 'none');
+    await expect(page.locator('#satwa')).toHaveCSS('display', 'none');
+  }
+
+  const popup = await openPopup();
+  const count = popup.locator('#blocked-count');
+  const worker = context.serviceWorkers()[0] ?? await context.waitForEvent('serviceworker');
+  const readBadge = () => worker.evaluate(() => chrome.action.getBadgeText({}));
+  await expect(count).toHaveText('8 unggahan unik diblokir');
+  await expect.poll(readBadge).toBe('8');
+  await expect(popup.getByText('@tokoh · Politik (Joko Widodo)', { exact: true })).toBeVisible();
+  await expect(popup.getByText('@kutipTokoh · Politik (Anies Rasyid Baswedan)', { exact: true })).toBeVisible();
+  await expect(popup.getByText('@partai · Politik (Partai Demokrasi Indonesia Perjuangan)', { exact: true })).toBeVisible();
+  await expect(popup.getByText('@satwa · Umpatan (monyet)', { exact: true })).toBeVisible();
+
+  const politics = popup.getByRole('switch', { name: 'Blokir politik di Beranda' });
+  await politics.uncheck();
+  await expect(home.locator('#tokoh')).toBeVisible();
+  await expect(home.locator('#kutipTokoh')).toBeVisible();
+  await expect(home.locator('#partai')).toBeVisible();
+  await expect(home.locator('#adopsi')).toHaveCSS('display', 'none');
+  await expect(home.locator('#satwa')).toHaveCSS('display', 'none');
+  await politics.check();
+  await expect(home.locator('#tokoh')).toHaveCSS('display', 'none');
+  await expect(count).toHaveText('8 unggahan unik diblokir');
+  await expect.poll(readBadge).toBe('8');
+});
+
 test('riwayat terisi otomatis, menjelaskan alasan, dan mencatat setiap ID sekali lintas tab', async () => {
   const popup = await openPopup();
   const count = popup.locator('#blocked-count');

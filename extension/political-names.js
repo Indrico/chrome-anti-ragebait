@@ -1,0 +1,43 @@
+// Each entry starts with the name shown in the block history, followed by aliases.
+const politicalNames = [
+  // Reform-era presidents and vice presidents.
+  ['B.J. Habibie', 'BJ Habibie', 'B. J. Habibie', 'Bacharuddin Jusuf Habibie'],
+  ['Abdurrahman Wahid', 'Abdurahman Wahid', 'Gus Dur'],
+  ['Megawati Soekarnoputri', 'Megawati', 'Megawati Sukarnoputri'],
+  ['Hamzah Haz'],
+  ['Susilo Bambang Yudhoyono', 'Pak SBY', 'Presiden SBY'],
+  ['Jusuf Kalla', 'Muhammad Jusuf Kalla', 'Pak JK'],
+  ['Boediono'],
+  ['Joko Widodo', 'Jokowi'],
+  ["Ma'ruf Amin", 'Maruf Amin'],
+  ['Prabowo Subianto', 'Prabowo'],
+  ['Gibran Rakabuming Raka', 'Gibran Rakabuming', 'Gibran'],
+  // Other candidates in KPU Decision 1632/2023.
+  ['Anies Rasyid Baswedan', 'Anies Baswedan', 'Anies'],
+  ['Muhaimin Iskandar', 'Abdul Muhaimin Iskandar', 'Cak Imin'],
+  ['Ganjar Pranowo', 'Ganjar'],
+  ['Mahfud MD', 'Mahfud M.D.', 'Mohammad Mahfud MD'],
+  // The chairs of DPR, MPR, and DPD for the 2024–2029 term.
+  ['Puan Maharani'],
+  ['Ahmad Muzani'],
+  ['Sultan Bachtiar Najamudin', 'Sultan B. Najamudin', 'Sultan B Najamudin'],
+  // National parties in KPU Decision 551/2022.
+  ['Partai Demokrasi Indonesia Perjuangan', 'PDIP', 'PDI-P', 'PDI Perjuangan', 'Partai PDIP'],
+  ['Partai Keadilan Sejahtera', 'Partai PKS'],
+  ['Partai Perindo', 'Partai Persatuan Indonesia', 'Perindo'],
+  ['Partai NasDem', 'NasDem', 'Partai Nasional Demokrat'],
+  ['Partai Bulan Bintang', 'Partai PBB'],
+  ['Partai Kebangkitan Nusantara', 'Partai PKN'],
+  ['Partai Garda Perubahan Indonesia', 'Partai Garuda', 'Partai Gerakan Perubahan Indonesia', 'Partai Garda Republik Indonesia'],
+  ['Partai Demokrat'],
+  ['Partai Gelombang Rakyat Indonesia', 'Partai Gelora'],
+  ['Partai Hati Nurani Rakyat', 'Partai Hanura', 'Hanura'],
+  ['Partai Gerakan Indonesia Raya', 'Partai Gerindra', 'Gerindra'],
+  ['Partai Kebangkitan Bangsa', 'Partai PKB'],
+  ['Partai Solidaritas Indonesia', 'Partai PSI'],
+  ['Partai Amanat Nasional', 'Partai PAN'],
+  ['Partai Golkar', 'Partai Golongan Karya', 'Golkar'],
+  ['Partai Persatuan Pembangunan', 'Partai PPP'],
+  ['Partai Buruh'],
+  ['Partai Ummat'],
+];

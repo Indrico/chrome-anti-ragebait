@@ -1,6 +1,6 @@
 # Chrome Anti-Ragebait
 
-Ekstensi Chrome desktop yang otomatis menyaring dugaan ragebait, istilah politik, dan umpatan dari *For You* dan *Following* di Beranda X. Filter umpatan juga berlaku di hasil pencarian. Aturan bawaan berfokus pada bahasa Indonesia, slang, serta campuran Indonesia–Inggris.
+Ekstensi Chrome desktop yang otomatis menyaring dugaan ragebait, istilah dan nama politik, serta umpatan dari *For You* dan *Following* di Beranda X. Filter umpatan juga berlaku di hasil pencarian. Aturan bawaan berfokus pada bahasa Indonesia, slang, serta campuran Indonesia–Inggris.
 
 ## Pemasangan di Chrome
 
@@ -17,9 +17,11 @@ Untuk memperbarui pemasangan yang sudah ada, salin isi ZIP baru ke folder eksten
 
 Filter membaca teks unggahan dan kutipan. Di Beranda, daftar politik bawaan mencakup kata dan frasa seperti *pemilu*, *pilkada*, *DPR*, dan *partai politik*. Unggahan yang cocok disembunyikan juga saat nadanya netral.
 
+Daftar nama politik mencakup presiden dan wakil presiden sejak Reformasi, calon Pilpres 2024, ketua DPR, MPR, dan DPD yang ditetapkan untuk periode 2024–2029, serta 18 partai nasional peserta Pemilu 2024. Filter mengenali nama lengkap, alias seperti **Jokowi** dan **Cak Imin**, serta tagar utuh seperti **#AniesBaswedan**. Singkatan ambigu seperti **PAN** perlu konteks **Partai PAN**. [Sekretariat Kabinet](https://setkab.go.id/profil-kabinet/) · [KPU](https://jdih.kpu.go.id/data/data_kepkpu/2023kpt1632.pdf) · [Risalah MPR](https://www.mpr.go.id/dokumen/risalah/file/1758790146_file_mpr.pdf) · [Daftar partai KPU](https://jdih.kpu.go.id/data/data_kepkpu/2022kpt551.pdf)
+
 Filter politik aktif secara default. Gunakan sakelar **Blokir politik di Beranda** di popup untuk menjedanya di semua tab X sambil tetap menyaring ragebait dan umpatan.
 
-Di Beranda dan hasil pencarian, satu umpatan dari daftar bawaan, seperti *goblok*, *tolol*, atau *brengsek*, cukup untuk menyembunyikan unggahan. Riwayat menampilkan alasan **Umpatan** dan kata yang cocok. Pengguna tetap bisa mengetik istilah tersebut di kotak pencarian.
+Di Beranda dan hasil pencarian, satu kata utuh dari daftar umpatan sudah cukup untuk menyembunyikan unggahan. Daftar mencakup *goblok*, *tolol*, *brengsek*, *anjing*, dan *monyet*, termasuk pemakaian harfiah pada unggahan tentang hewan. Riwayat menampilkan alasan **Umpatan** dan kata yang cocok. Pengguna tetap bisa mengetik istilah tersebut di kotak pencarian.
 
 Konten bergambar atau bervideo dinilai dari teks unggahan yang menyertainya. Profil dan halaman utas dapat dibuka seperti biasa.
 

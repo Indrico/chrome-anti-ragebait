@@ -27,6 +27,14 @@
     return {};
   }
 
+  function findTermMatch(texts, findTerm, reason) {
+    for (const { normalizedText } of texts) {
+      const term = findTerm(normalizedText);
+      if (term) return { reason, term, normalizedText };
+    }
+    return null;
+  }
+
   function getBlockDecision(cell) {
     const posts = [...cell.querySelectorAll(postSelector)].filter((post) =>
       post.closest(cellSelector) === cell && !post.parentElement.closest(postSelector),
@@ -35,30 +43,34 @@
 
     // The tweet-text markers identify each text independently, including quoted text.
     const [post] = posts;
-    const textNodes = [...post.querySelectorAll(textSelector)];
-    for (const text of textNodes) {
+    const texts = [...post.querySelectorAll(textSelector)].map((text) => {
       const rawText = text.textContent;
-      const normalizedText = normalizePostText(rawText);
-      const profanity = findProfanityTerm(normalizedText);
-      const politics = activePath === '/home' && settings.politicsEnabled && !profanity
-        ? findPoliticalTerm(normalizedText)
-        : null;
-      const ragebait = activePath === '/home' && !profanity && !politics &&
-        isIndonesianRagebait(rawText, text.getAttribute('lang') ?? '');
-      if (!profanity && !politics && !ragebait) continue;
-
-      const { id, author } = getPostIdentity(post);
-      const preview = normalizedText.slice(0, 180);
-      return {
-        id: id ?? null,
-        author: author ?? null,
-        reason: profanity ? 'profanity' : politics ? 'politics' : 'ragebait',
-        term: profanity ?? politics,
-        excerpt: normalizedText.length > preview.length ? `${preview}…` : preview,
-        fallbackText: id ? null : textNodes.map((node) => normalizePostText(node.textContent)).join('\n').slice(0, 4096),
-      };
+      return { rawText, normalizedText: normalizePostText(rawText), language: text.getAttribute('lang') ?? '' };
+    });
+    let match = findTermMatch(texts, findProfanityTerm, 'profanity');
+    if (!match && activePath === '/home') {
+      if (settings.politicsEnabled) {
+        match = findTermMatch(texts, findPoliticalName, 'politics') ??
+          findTermMatch(texts, findPoliticalTerm, 'politics');
+      }
+      if (!match) {
+        const ragebait = texts.find(({ rawText, language }) => isIndonesianRagebait(rawText, language));
+        if (ragebait) match = { reason: 'ragebait', term: null, normalizedText: ragebait.normalizedText };
+      }
     }
-    return null;
+    if (!match) return null;
+
+    const { id, author } = getPostIdentity(post);
+    const { reason, term, normalizedText } = match;
+    const preview = normalizedText.slice(0, 180);
+    return {
+      id: id ?? null,
+      author: author ?? null,
+      reason,
+      term,
+      excerpt: normalizedText.length > preview.length ? `${preview}…` : preview,
+      fallbackText: id ? null : texts.map((text) => text.normalizedText).join('\n').slice(0, 4096),
+    };
   }
 
   async function recordBlockedPosts(posts) {
