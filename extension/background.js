@@ -31,11 +31,13 @@ async function withBlockHistory(mode, run) {
 }
 
 async function getPostKey(post) {
-  if (post.id) return `x:${post.id}`;
-  const bytes = new TextEncoder().encode(post.fallbackText.toLowerCase());
+  const site = post.site ?? 'x';
+  if (post.id) return `${site}:${post.id}`;
+  const fingerprint = site === 'x' ? post.fallbackText : `${post.author ?? ''}\n${post.fallbackText}`;
+  const bytes = new TextEncoder().encode(fingerprint.toLowerCase());
   const hash = await crypto.subtle.digest('SHA-256', bytes);
   const hex = Array.from(new Uint8Array(hash), (byte) => byte.toString(16).padStart(2, '0')).join('');
-  return `text:${hex}`;
+  return site === 'x' ? `text:${hex}` : `${site}:text:${hex}`;
 }
 
 async function addBlockedPosts(posts) {
@@ -44,8 +46,8 @@ async function addBlockedPosts(posts) {
   for (let i = 0; i < posts.length; i += 1) {
     const key = keys[i];
     if (entries.has(key)) continue;
-    const { author, reason, term, excerpt } = posts[i];
-    entries.set(key, { key, author, reason, term, excerpt, blockedAt: Date.now() });
+    const { site, author, reason, term, excerpt } = posts[i];
+    entries.set(key, { key, site, author, reason, term, excerpt, blockedAt: Date.now() });
   }
 
   return withBlockHistory('readwrite', async (store) => {

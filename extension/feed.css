@@ -1,9 +1,11 @@
-html[data-anti-ragebait-active] [data-testid="primaryColumn"] [data-testid="cellInnerDiv"][data-anti-ragebait-state="blocked"] {
+html[data-anti-ragebait-active] [data-anti-ragebait-state="blocked"] {
   display: none !important;
 }
 
-html[data-anti-ragebait-active] [data-testid="primaryColumn"] [data-testid="cellInnerDiv"]:has(article[data-testid="tweet"]):not([data-anti-ragebait-state]),
-html[data-anti-ragebait-active] [data-testid="primaryColumn"] [data-testid="cellInnerDiv"]:has(article[data-testid="tweet"]):not([data-anti-ragebait-state]) * {
+html[data-anti-ragebait-active] [data-anti-ragebait-state="pending"],
+html[data-anti-ragebait-active] [data-anti-ragebait-state="pending"] *,
+html[data-anti-ragebait-active="x"] [data-testid="primaryColumn"] [data-testid="cellInnerDiv"]:has(article[data-testid="tweet"]):not([data-anti-ragebait-state]),
+html[data-anti-ragebait-active="x"] [data-testid="primaryColumn"] [data-testid="cellInnerDiv"]:has(article[data-testid="tweet"]):not([data-anti-ragebait-state]) * {
   visibility: hidden !important;
   pointer-events: none !important;
 }

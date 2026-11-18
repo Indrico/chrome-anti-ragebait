@@ -1,4 +1,5 @@
 const path = require('node:path');
+const { createHash } = require('node:crypto');
 const { test, expect, chromium } = require('@playwright/test');
 
 const extension = path.resolve(__dirname, '../extension');
@@ -78,6 +79,168 @@ async function openPopup() {
   return popup;
 }
 
+const metaSites = [
+  {
+    name: 'Facebook', host: 'www.facebook.com', search: '/search/posts/?q=goblok', unsupported: '/messages/t/4',
+    card: (name, text, id, { search, quote, comment } = {}) => `
+      <div role="article" id="${name}">
+        <header><strong>${name}</strong></header>
+        <a href="${search ? '/permalink.php?story_fbid=' + id + '&id=75' : '/' + name + '/posts/' + id}"><time>Hari ini</time></a>
+        <div data-ad-comet-preview="message" data-test-body>${text}</div>
+        ${quote ? `<blockquote><div role="article"><div data-ad-preview="message" data-test-quote>${quote}</div></div></blockquote>` : ''}
+        ${comment ? `<div data-testid="comments"><div role="article"><div data-ad-preview="message">${comment}</div></div></div>` : ''}
+        <button type="button">Suka</button>
+      </div>`,
+  },
+  {
+    name: 'Instagram', host: 'www.instagram.com', search: '/explore/search/keyword/?q=goblok', unsupported: '/direct/inbox/',
+    card: (name, text, id, { search, comment } = {}) => search
+      ? `<a id="${name}" href="/${name}/p/${id}/"><figure><img alt="Foto"><figcaption data-test-body>${text}</figcaption></figure></a>`
+      : `<article id="${name}">
+        <header><a href="/${name}/">${name}</a><a href="/p/${id}/"><time>Hari ini</time></a></header>
+        <div><h2><a href="/${name}/">${name}</a></h2><span dir="auto" data-test-body>${text}</span></div>
+        ${comment ? `<ul data-testid="comments"><li><span dir="auto">${comment}</span></li></ul>` : ''}
+        <button type="button">Suka</button>
+      </article>`,
+  },
+  {
+    name: 'Threads', host: 'www.threads.com', search: '/search?q=goblok', unsupported: '/@contoh/post/101',
+    card: (name, text, id, { quote, comment } = {}) => `
+      <div data-pressable-container="true" id="${name}">
+        <a href="/@${name}"><span dir="auto">${name}</span></a>
+        <a href="/@${name}/post/${id}?xmt=demo"><time>Hari ini</time></a>
+        <div dir="auto" data-test-body>${text}</div>
+        ${quote ? `<blockquote><div data-pressable-container="true"><a href="/@kutipan/post/909"><time>Hari ini</time></a><div dir="auto" data-test-quote>${quote}</div></div></blockquote>` : ''}
+        ${comment ? `<div data-testid="comments"><div dir="auto">${comment}</div></div>` : ''}
+        <button type="button">Suka</button>
+      </div>`,
+  },
+];
+
+async function openMetaPage(site, pathname = '/') {
+  const origin = `https://${site.host}`;
+  const page = await context.newPage();
+  await page.route(`${origin}/**`, (route) => {
+    const search = new URL(route.request().url()).pathname === new URL(site.search, origin).pathname;
+    const fixture = `<!doctype html><html lang="id"><body>
+      <nav><input aria-label="Cari" value="goblok"></nav>
+      <main><div id="meta-feed" role="feed">
+        ${site.card('kata', 'Goblok!', '101', { search })}
+        ${site.card('politik', 'Jokowi datang.', '104', { search })}
+        ${site.card('bait', blockedText, '107', { search })}
+        ${site.card('biasa', 'Catatan kegiatan hari ini.', '108', { search, comment: 'goblok' })}
+        ${site.card('tanpaTeks', '', '109', { search })}
+      </div><div style="height: 1400px"></div></main>
+      <aside>${site.card('samping', 'goblok', '201')}</aside>
+      <div role="dialog">${site.card('pesan', 'goblok', '202')}</div>
+      </body></html>`;
+    return route.fulfill({ contentType: 'text/html; charset=utf-8', body: fixture });
+  });
+  await page.goto(origin + pathname);
+  return page;
+}
+
+for (const site of metaSites) {
+  test(`${site.name} memakai filter Beranda dan pencarian pada kartu yang dikenali`, async () => {
+    const page = await openMetaPage(site);
+    for (const id of ['kata', 'politik', 'bait']) {
+      await expect(page.locator(`#${id}`)).toHaveCSS('display', 'none');
+    }
+    for (const id of ['biasa', 'tanpaTeks', 'samping', 'pesan']) {
+      await expect(page.locator(`#${id}`)).toBeVisible();
+    }
+    await expect(page.locator('#tanpaTeks')).not.toHaveAttribute('data-anti-ragebait-state');
+    await expect(page.getByRole('textbox', { name: 'Cari' })).toHaveValue('goblok');
+
+    const latePost = site.card('scrollPost', 'Goblok!', '212');
+    await page.evaluate((html) => {
+      window.addEventListener('scroll', () => {
+        document.querySelector('#meta-feed').insertAdjacentHTML('beforeend', html);
+      }, { once: true });
+      window.scrollTo(0, 500);
+    }, latePost);
+    await expect(page.locator('#scrollPost')).toHaveCSS('display', 'none');
+    await page.locator('#tanpaTeks [data-test-body]').evaluate((body) => { body.textContent = 'Goblok!'; });
+    await expect(page.locator('#tanpaTeks')).toHaveCSS('display', 'none');
+    await page.locator('#scrollPost [data-test-body]').evaluate((body) => { body.textContent = 'Agenda hari ini.'; });
+    await expect(page.locator('#scrollPost')).toBeVisible();
+
+    if (site.name !== 'Instagram') {
+      await page.locator('#meta-feed').evaluate((feed, html) => feed.insertAdjacentHTML('beforeend', html),
+        site.card('kutipan', 'Agenda hari ini.', '220', { quote: 'Catatan tambahan.' }));
+      await expect(page.locator('#kutipan')).toBeVisible();
+      await page.locator('#kutipan [data-test-quote]').evaluate((text) => { text.textContent = 'Goblok!'; });
+      await expect(page.locator('#kutipan')).toHaveCSS('display', 'none');
+    }
+
+    await page.evaluate((path) => history.pushState({}, '', path), site.search);
+    await expect(page.locator('#politik')).toBeVisible();
+    await expect(page.locator('#bait')).toBeVisible();
+    await expect(page.locator('#kata')).toHaveCSS('display', 'none');
+    const search = await openMetaPage(site, site.search);
+    await expect(search.locator('#kata')).toHaveCSS('display', 'none');
+    await expect(search.locator('#politik')).toBeVisible();
+    await expect(search.locator('#biasa')).toBeVisible();
+    await expect(search.getByRole('textbox', { name: 'Cari' })).toHaveValue('goblok');
+
+    await page.evaluate((path) => history.pushState({}, '', path), site.unsupported);
+    await expect(page.locator('#kata')).toBeVisible();
+    const outside = await openMetaPage(site, site.unsupported);
+    await expect(outside.locator('#kata')).toBeVisible();
+    await expect(outside.locator('#kata')).not.toHaveAttribute('data-anti-ragebait-state');
+  });
+}
+
+test('riwayat dan sakelar gabungan kompatibel dengan data X lama', async () => {
+  const popup = await openPopup();
+  const count = popup.locator('#blocked-count');
+  const worker = context.serviceWorkers()[0] ?? await context.waitForEvent('serviceworker');
+  await expect(count).toHaveText('0 unggahan unik diblokir');
+  const legacyFallback = 'Goblok! Berkas arsip.';
+  const legacyHash = createHash('sha256').update(legacyFallback.toLowerCase()).digest('hex');
+  await worker.evaluate(async (hash) => {
+    await withBlockHistory('readwrite', async (store) => {
+      const record = { author: 'arsip', reason: 'profanity', term: 'goblok', excerpt: 'Goblok!', blockedAt: 1 };
+      await requestResult(store.add({ ...record, key: 'x:101' }));
+      await requestResult(store.add({ ...record, key: 'text:' + hash }));
+    });
+    refreshBadge();
+  }, legacyHash);
+  await popup.reload();
+  await expect(count).toHaveText('2 unggahan unik diblokir');
+  await expect(popup.locator('.entry-site')).toHaveText(['X', 'X']);
+
+  const x = await context.newPage();
+  await x.goto('https://x.com/home');
+  await x.locator('#timeline').evaluate((feed, html) => feed.insertAdjacentHTML('beforeend', html),
+    makePost('arsip', legacyFallback));
+  await expect(x.locator('#arsip')).toHaveCSS('display', 'none');
+  const homes = await Promise.all(metaSites.map((site) => openMetaPage(site)));
+  const searches = await Promise.all(metaSites.map((site) => openMetaPage(site, site.search)));
+  for (const page of [...homes, ...searches]) {
+    await expect(page.locator('#kata')).toHaveCSS('display', 'none');
+  }
+  await expect(count).toHaveText('13 unggahan unik diblokir');
+  await expect.poll(() => worker.evaluate(() => chrome.action.getBadgeText({}))).toBe('13');
+  for (const site of ['X', ...metaSites.map(({ name }) => name)]) {
+    await expect(popup.locator('.entry-site').filter({ hasText: new RegExp(`^${site}$`) }).first()).toBeVisible();
+  }
+
+  await popup.getByRole('switch', { name: 'Blokir politik di Beranda' }).uncheck();
+  for (const page of homes) {
+    await expect(page.locator('#politik')).toBeVisible();
+    await expect(page.locator('#bait')).toHaveCSS('display', 'none');
+  }
+  await expect(x.locator('#politics')).toBeVisible();
+  const master = popup.getByRole('switch', { name: 'Saring unggahan' });
+  await master.uncheck();
+  for (const page of [...homes, ...searches]) await expect(page.locator('#kata')).toBeVisible();
+  await expect(x.locator('#blocked')).toBeVisible();
+  await master.check();
+  for (const page of [...homes, ...searches]) await expect(page.locator('#kata')).toHaveCSS('display', 'none');
+  await expect(count).toHaveText('13 unggahan unik diblokir');
+});
+
 test('filter aktif sejak pertama dibuka dan kartu terjaring tidak menerima interaksi', async () => {
   const page = await context.newPage();
   await page.goto('https://x.com/home');
@@ -156,7 +319,7 @@ test('sakelar popup berlaku di semua tab dan bertahan setelah halaman dimuat ula
   await expect(otherHome.locator('#blocked')).toHaveCSS('display', 'none');
 
   const popup = await openPopup();
-  const toggle = popup.getByRole('switch', { name: 'Saring unggahan X' });
+  const toggle = popup.getByRole('switch', { name: 'Saring unggahan' });
   await expect(toggle).toBeChecked();
   await toggle.uncheck();
   await expect(home.locator('#blocked')).toBeVisible();
@@ -209,7 +372,7 @@ test('umpatan diblokir di hasil pencarian dan Beranda serta tercatat di popup', 
   await expect(page.locator('#politics')).toBeVisible();
   await expect(page.locator('#umpatan')).toHaveCSS('display', 'none');
 
-  const toggle = popup.getByRole('switch', { name: 'Saring unggahan X' });
+  const toggle = popup.getByRole('switch', { name: 'Saring unggahan' });
   await toggle.uncheck();
   await expect(page.locator('#umpatan')).toBeVisible();
   await toggle.check();
@@ -224,7 +387,7 @@ test('sakelar politik berlaku lintas tab dan tersimpan terpisah dari filter lain
   await expect(second.locator('#politics')).toHaveCSS('display', 'none');
 
   const popup = await openPopup();
-  const master = popup.getByRole('switch', { name: 'Saring unggahan X' });
+  const master = popup.getByRole('switch', { name: 'Saring unggahan' });
   const politics = popup.getByRole('switch', { name: 'Blokir politik di Beranda' });
   await expect(politics).toBeChecked();
   await politics.uncheck();

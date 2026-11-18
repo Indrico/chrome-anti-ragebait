@@ -92,10 +92,15 @@ h2 {
   outline-offset: -2px;
 }
 
-.block-history time {
+.block-history time,
+.entry-site {
   display: block;
   margin-inline-start: 1.2rem;
   font-size: 0.85rem;
+}
+
+.entry-site {
+  font-weight: 600;
 }
 
 .entry-excerpt {

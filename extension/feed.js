@@ -1,31 +1,19 @@
 (() => {
-  const columnSelector = '[data-testid="primaryColumn"]';
-  const cellSelector = '[data-testid="cellInnerDiv"]';
-  const feedCellSelector = `${columnSelector} ${cellSelector}`;
-  const postSelector = 'article[data-testid="tweet"]';
-  const textSelector = '[data-testid="tweetText"]';
-  const permalinkSelector = 'a[href*="/status/"]:has(time)';
-  const postContentSelector = `${postSelector}, ${textSelector}`;
+  const adapter = feedAdapters[location.hostname.replace(/^www\./u, '')];
+  if (!adapter) return;
   const activeAttribute = 'data-anti-ragebait-active';
   const stateAttribute = 'data-anti-ragebait-state';
-  const pendingCells = new Set();
+  const markedCard = `[${stateAttribute}]`;
+  const candidateCards = `${adapter.card}, ${markedCard}`;
+  const pendingCards = new Map();
   const settings = { enabled: true, politicsEnabled: true };
   const settingKeys = Object.keys(settings);
   const changesDuringLoad = {};
 
   let settingsReady = false;
-  let activePath = null;
+  let activeSurface = null;
   let frameId = 0;
   const observer = new MutationObserver(handleMutations);
-
-  function getPostIdentity(post) {
-    for (const link of post.querySelectorAll(permalinkSelector)) {
-      if (post.contains(link.closest('div[role="link"]'))) continue;
-      const permalink = link.getAttribute('href').match(/^(?:https:\/\/x\.com)?\/(?:(?<author>[a-z0-9_]{1,15})\/status\/|i\/web\/status\/)(?<id>\d{1,24})(?:[/?#]|$)/iu);
-      if (permalink) return permalink.groups;
-    }
-    return {};
-  }
 
   function findTermMatch(texts, findTerm, reason) {
     for (const { normalizedText } of texts) {
@@ -35,20 +23,10 @@
     return null;
   }
 
-  function getBlockDecision(cell) {
-    const posts = [...cell.querySelectorAll(postSelector)].filter((post) =>
-      post.closest(cellSelector) === cell && !post.parentElement.closest(postSelector),
-    );
-    if (posts.length !== 1) return null;
-
-    // The tweet-text markers identify each text independently, including quoted text.
-    const [post] = posts;
-    const texts = [...post.querySelectorAll(textSelector)].map((text) => {
-      const rawText = text.textContent;
-      return { rawText, normalizedText: normalizePostText(rawText), language: text.getAttribute('lang') ?? '' };
-    });
+  function getBlockDecision({ id, author, texts: parts }) {
+    const texts = parts.map((text) => ({ ...text, normalizedText: normalizePostText(text.rawText) }));
     let match = findTermMatch(texts, findProfanityTerm, 'profanity');
-    if (!match && activePath === '/home') {
+    if (!match && activeSurface === 'home') {
       if (settings.politicsEnabled) {
         match = findTermMatch(texts, findPoliticalName, 'politics') ??
           findTermMatch(texts, findPoliticalTerm, 'politics');
@@ -60,10 +38,10 @@
     }
     if (!match) return null;
 
-    const { id, author } = getPostIdentity(post);
     const { reason, term, normalizedText } = match;
     const preview = normalizedText.slice(0, 180);
     return {
+      site: adapter.site,
       id: id ?? null,
       author: author ?? null,
       reason,
@@ -83,7 +61,7 @@
   }
 
   function scheduleBatch() {
-    if (settingsReady && pendingCells.size && !frameId) {
+    if (settingsReady && pendingCards.size && !frameId) {
       frameId = requestAnimationFrame(processBatch);
     }
   }
@@ -92,12 +70,14 @@
     frameId = 0;
     const deadline = performance.now() + 6;
     const blockedPosts = [];
-    for (const cell of pendingCells) {
-      pendingCells.delete(cell);
-      if (cell.isConnected && cell.closest(columnSelector)) {
-        const decision = getBlockDecision(cell);
-        cell.setAttribute(stateAttribute, decision ? 'blocked' : 'visible');
+    for (const [card, post] of pendingCards) {
+      pendingCards.delete(card);
+      if (canReadCard(card)) {
+        const decision = getBlockDecision(post);
+        card.setAttribute(stateAttribute, decision ? 'blocked' : 'visible');
         if (decision) blockedPosts.push(decision);
+      } else {
+        card.removeAttribute(stateAttribute);
       }
       if (performance.now() >= deadline) break;
     }
@@ -105,87 +85,110 @@
     scheduleBatch();
   }
 
-  function queueCell(cell) {
-    if (!cell?.isConnected || !cell.closest(columnSelector) || pendingCells.has(cell)) return;
-    cell.removeAttribute(stateAttribute);
-    pendingCells.add(cell);
+  function canReadCard(card) {
+    if (!card.isConnected || !card.matches(adapter.card)) return false;
+    if (adapter.scope && !card.closest(adapter.scope)) return false;
+    if (!adapter.excluded) return true;
+    return !card.closest(adapter.excluded) && !card.parentElement?.closest(adapter.card);
+  }
+
+  function queueCard(card) {
+    const readable = canReadCard(card);
+    const post = readable ? adapter.read(card) : null;
+    if (!post?.texts.length) {
+      pendingCards.delete(card);
+      if (adapter.site === 'x' && readable) card.setAttribute(stateAttribute, 'visible');
+      else card.removeAttribute(stateAttribute);
+      return;
+    }
+    card.setAttribute(stateAttribute, 'pending');
+    pendingCards.set(card, post);
     scheduleBatch();
   }
 
   function containsPostContent(node) {
     return node instanceof Element &&
-      (node.matches(postContentSelector) || node.querySelector(postContentSelector));
+      (node.matches(adapter.content) || node.querySelector(adapter.content));
+  }
+
+  function collectCards(root, cards) {
+    if (root.matches(candidateCards)) cards.add(root);
+    for (const card of root.querySelectorAll(candidateCards)) cards.add(card);
   }
 
   function handleMutations(records) {
+    const cards = new Set();
     for (const record of records) {
       const target = record.target instanceof Element ? record.target : record.target.parentElement;
       if (!target) continue;
-
-      const cell = target.closest(cellSelector);
-      if (record.attributeName === 'data-testid') {
-        if (target.matches(columnSelector)) {
-          target.querySelectorAll(cellSelector).forEach(queueCell);
-        } else if (target.matches(cellSelector) || target.matches(postContentSelector) ||
-                   record.oldValue === 'tweet' || record.oldValue === 'tweetText') {
-          queueCell(cell);
+      let card = target.closest(adapter.card) ?? target.closest(markedCard);
+      if (adapter.excluded && card) {
+        // Text arriving inside a shared post is part of the outer feed card.
+        let parentCard = card.parentElement?.closest(adapter.card);
+        while (parentCard) {
+          card = parentCard;
+          parentCard = card.parentElement?.closest(adapter.card);
         }
+      }
+      if (record.type === 'attributes') {
+        if (card) cards.add(card);
+        else collectCards(target, cards);
         continue;
       }
 
-      if (cell) {
-        if (target.closest(textSelector) ||
-            [...record.addedNodes, ...record.removedNodes].some(containsPostContent)) {
-          queueCell(cell);
-        }
-        continue;
+      if (adapter.excluded && target.closest(adapter.excluded)) continue;
+      if (card && (target.closest(adapter.content) ||
+          [...record.addedNodes, ...record.removedNodes].some(containsPostContent))) {
+        cards.add(card);
       }
-
       for (const node of record.addedNodes) {
-        if (!(node instanceof Element)) continue;
-        if (node.matches(cellSelector)) queueCell(node);
-        node.querySelectorAll(cellSelector).forEach(queueCell);
+        if (node instanceof Element) collectCards(node, cards);
       }
     }
+    for (const card of cards) queueCard(card);
   }
 
   function refreshActivation() {
     const root = document.documentElement;
     if (!root) return;
-    const path = location.pathname.replace(/\/$/u, '');
-    const nextPath = settings.enabled && (path === '/home' || path === '/search') ? path : null;
-    if (activePath === nextPath) return;
+    const path = location.pathname.replace(/\/$/u, '') || '/';
+    const nextSurface = settings.enabled ? adapter.surface(path) : null;
+    if (activeSurface === nextSurface) return;
 
     observer.disconnect();
     cancelAnimationFrame(frameId);
     frameId = 0;
-    pendingCells.clear();
+    pendingCards.clear();
 
-    activePath = nextPath;
-    root.toggleAttribute(activeAttribute, activePath !== null);
-    if (!activePath) {
-      root.querySelectorAll(`[${stateAttribute}]`).forEach((cell) => cell.removeAttribute(stateAttribute));
+    activeSurface = nextSurface;
+    if (!activeSurface) {
+      root.removeAttribute(activeAttribute);
+      root.querySelectorAll(markedCard).forEach((card) => card.removeAttribute(stateAttribute));
       return;
     }
 
+    root.setAttribute(activeAttribute, adapter.site);
     observer.observe(root, {
       childList: true,
       subtree: true,
       characterData: true,
-      attributeFilter: ['lang', 'data-testid'],
-      attributeOldValue: true,
+      attributeFilter: adapter.site === 'x' ? ['lang', 'data-testid', 'href'] : [
+        'lang', 'dir', 'role', 'href', 'hidden', 'aria-hidden', 'aria-modal', 'contenteditable',
+        'data-testid', 'data-caption', 'data-pagelet', 'data-pressable-container', 'data-text-post-text',
+        'data-ad-preview', 'data-ad-comet-preview', 'data-ad-rendering-role',
+      ],
     });
-    root.querySelectorAll(feedCellSelector).forEach(queueCell);
+    root.querySelectorAll(candidateCards).forEach(queueCard);
   }
 
   function applySettings(updatedSettings) {
-    const previousPath = activePath;
+    const previousSurface = activeSurface;
     const previousPoliticsEnabled = settings.politicsEnabled;
     Object.assign(settings, updatedSettings);
     refreshActivation();
-    if (previousPath === '/home' && activePath === '/home' &&
+    if (previousSurface === 'home' && activeSurface === 'home' &&
         previousPoliticsEnabled !== settings.politicsEnabled) {
-      document.querySelectorAll(feedCellSelector).forEach(queueCell);
+      document.querySelectorAll(adapter.card).forEach(queueCard);
     }
   }
 
