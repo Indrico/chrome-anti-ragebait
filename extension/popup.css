@@ -4,7 +4,7 @@
 }
 
 body {
-  inline-size: 240px;
+  inline-size: 300px;
   margin: 0;
   padding: 16px;
 }
@@ -45,4 +45,56 @@ input:focus-visible {
 
 #status {
   margin-block: 12px 0;
+}
+
+h2 {
+  font-size: 0.95rem;
+  margin-block: 18px 4px;
+}
+
+#blocked-count {
+  margin-block: 0 8px;
+  font-weight: 650;
+}
+
+#history-status {
+  margin-block: 0;
+}
+
+.block-history {
+  max-block-size: 264px;
+  overflow-y: auto;
+  list-style: none;
+  margin: 0;
+  padding-inline: 2px;
+}
+
+.block-history li {
+  border-block-start: 1px solid GrayText;
+}
+
+.block-history summary {
+  padding: 8px 6px;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.block-history summary:hover {
+  background-color: color-mix(in srgb, CanvasText 7%, Canvas);
+}
+
+.block-history summary:focus-visible {
+  outline: 2px solid CanvasText;
+  outline-offset: -2px;
+}
+
+.block-history time {
+  display: block;
+  margin-inline-start: 1.2rem;
+  font-size: 0.85rem;
+}
+
+.entry-excerpt {
+  margin: 0 6px 10px 1.6rem;
+  overflow-wrap: anywhere;
 }

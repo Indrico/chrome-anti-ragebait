@@ -14,5 +14,22 @@
     <input id="enabled" type="checkbox" role="switch" disabled>
   </label>
   <p id="status" role="status" hidden></p>
+  <section aria-labelledby="history-heading">
+    <h2 id="history-heading">Riwayat blokir</h2>
+    <p id="blocked-count" role="status">Menghitung unggahan…</p>
+    <p id="history-status">Memuat riwayat…</p>
+    <ul id="block-history" class="block-history" aria-label="Unggahan terakhir yang diblokir"></ul>
+    <template id="history-entry">
+      <li>
+        <details>
+          <summary>
+            <span class="entry-label"></span>
+            <time></time>
+          </summary>
+          <p class="entry-excerpt" dir="auto"></p>
+        </details>
+      </li>
+    </template>
+  </section>
 </body>
 </html>

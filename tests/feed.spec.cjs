@@ -4,12 +4,16 @@ const { test, expect, chromium } = require('@playwright/test');
 const extension = path.resolve(__dirname, '../extension');
 const blockedText = 'Lu emang clown. Cry harder.';
 const normalText = 'Saya tidak setuju dengan hasil survei karena sampelnya kecil.';
-const makePost = (id, body, quote = '') =>
+const makePost = (id, body, quote = '', statusId = null) =>
   `<div data-testid="cellInnerDiv" id="${id}">
     <article data-testid="tweet">
       <div data-testid="tweetText" lang="id">${body}</div>
-      ${quote ? `<div role="link"><div data-testid="tweetText" lang="id">${quote}</div></div>` : ''}
+      ${quote ? `<div role="link">
+        <a href="/kutipan/status/999"><time>Hari ini</time></a>
+        <div data-testid="tweetText" lang="id">${quote}</div>
+      </div>` : ''}
       <button type="button">Suka</button>
+      ${statusId ? `<a href="/${id}/status/${statusId}"><time>Hari ini</time></a>` : ''}
     </article>
   </div>`;
 
@@ -19,13 +23,14 @@ const fixture = `<!doctype html><html lang="id">
     <button type="button" id="before">Sebelum feed</button>
     <main data-testid="primaryColumn">
       <div id="timeline">
-        ${makePost('blocked', blockedText)}
+        ${makePost('blocked', blockedText, '', 101)}
         <script>
           const firstPost = document.querySelector('#blocked article');
           window.initialPostVisibility = getComputedStyle(firstPost).visibility;
         </script>
-        ${makePost('normal', normalText)}
-        ${makePost('quoted', normalText, 'Ayo ribut di kolom komentar.')}
+        ${makePost('normal', normalText, '', 102)}
+        ${makePost('quoted', normalText, 'Ayo ribut di kolom komentar.', 103)}
+        ${makePost('politics', 'KPU mengumumkan jadwal pilkada.', '', 104)}
         <div data-testid="cellInnerDiv" id="unknown"><article>Struktur alternatif</article></div>
         <div data-testid="cellInnerDiv" id="multiple">
           <article data-testid="tweet"><div data-testid="tweetText" lang="id">${blockedText}</div></article>
@@ -62,6 +67,17 @@ test.afterEach(async () => {
   await context?.close();
 });
 
+async function openPopup() {
+  const manager = await context.newPage();
+  await manager.goto('chrome://extensions/');
+  const item = manager.locator('extensions-item').filter({ hasText: 'Chrome Anti-Ragebait' });
+  const id = await item.getAttribute('id');
+  const popup = await context.newPage();
+  await popup.goto(`chrome-extension://${id}/popup.html`);
+  await manager.close();
+  return popup;
+}
+
 test('filter aktif sejak pertama dibuka dan kartu terjaring tidak menerima interaksi', async () => {
   const page = await context.newPage();
   await page.goto('https://x.com/home');
@@ -69,6 +85,7 @@ test('filter aktif sejak pertama dibuka dan kartu terjaring tidak menerima inter
   expect(await page.evaluate(() => window.initialPostVisibility)).toBe('hidden');
   await expect(page.locator('#blocked')).toHaveCSS('display', 'none');
   await expect(page.locator('#quoted')).toBeHidden();
+  await expect(page.locator('#politics')).toBeHidden();
   await expect(page.locator('#normal')).toBeVisible();
   await expect(page.locator('#unknown')).toBeVisible();
   await expect(page.locator('#multiple')).toBeVisible();
@@ -138,12 +155,7 @@ test('sakelar popup berlaku di semua tab dan bertahan setelah halaman dimuat ula
   await expect(home.locator('#blocked')).toHaveCSS('display', 'none');
   await expect(otherHome.locator('#blocked')).toHaveCSS('display', 'none');
 
-  const manager = await context.newPage();
-  await manager.goto('chrome://extensions/');
-  const extensionItem = manager.locator('extensions-item').filter({ hasText: 'Chrome Anti-Ragebait' });
-  const id = await extensionItem.getAttribute('id');
-  const popup = await context.newPage();
-  await popup.goto(`chrome-extension://${id}/popup.html`);
+  const popup = await openPopup();
   const toggle = popup.getByRole('switch', { name: 'Saring Beranda X' });
   await expect(toggle).toBeChecked();
   await toggle.uncheck();
@@ -158,4 +170,67 @@ test('sakelar popup berlaku di semua tab dan bertahan setelah halaman dimuat ula
   await toggle.check();
   await expect(home.locator('#blocked')).toHaveCSS('display', 'none');
   await expect(otherHome.locator('#blocked')).toHaveCSS('display', 'none');
+});
+
+test('riwayat terisi otomatis, menjelaskan alasan, dan mencatat setiap ID sekali lintas tab', async () => {
+  const popup = await openPopup();
+  const count = popup.locator('#blocked-count');
+  const history = popup.locator('#block-history');
+  await expect(count).toHaveText('0 unggahan unik diblokir');
+  await expect(popup.getByText('Belum ada unggahan yang diblokir.')).toBeVisible();
+
+  const first = await context.newPage();
+  const second = await context.newPage();
+  await Promise.all([first.goto('https://x.com/home'), second.goto('https://x.com/home')]);
+  await expect(count).toHaveText('3 unggahan unik diblokir');
+  await expect(history.locator('li')).toHaveCount(3);
+  await expect(history.getByText('@quoted · Ragebait', { exact: true })).toBeVisible();
+  await expect(history.getByText('@kutipan', { exact: false })).toHaveCount(0);
+
+  const politicalEntry = history.locator('details').filter({ hasText: '@politics' });
+  await expect(politicalEntry.locator('summary')).toContainText('Politik (kpu)');
+  await expect(politicalEntry.locator('time')).toHaveAttribute('datetime', /T/);
+  await expect(politicalEntry.locator('.entry-excerpt')).toBeHidden();
+  await politicalEntry.locator('summary').press('Enter');
+  await expect(politicalEntry.locator('.entry-excerpt')).toBeVisible();
+  await expect(politicalEntry.locator('.entry-excerpt')).toHaveText('KPU mengumumkan jadwal pilkada.');
+
+  const html = makePost('berita', 'Catatan hari ini.', 'jadwal PILPRES diumumkan.', 105);
+  await Promise.all([first, second].map((page) =>
+    page.locator('#timeline').evaluate((timeline, post) => timeline.insertAdjacentHTML('beforeend', post), html),
+  ));
+  await expect(first.locator('#berita')).toHaveCSS('display', 'none');
+  await expect(second.locator('#berita')).toHaveCSS('display', 'none');
+  await expect(count).toHaveText('4 unggahan unik diblokir');
+  await expect(history.getByText('@berita · Politik (pilpres)', { exact: true })).toBeVisible();
+  await expect(politicalEntry.locator('.entry-excerpt')).toBeVisible();
+
+  await Promise.all([first.reload(), second.reload(), popup.reload()]);
+  await expect(first.locator('#politics')).toHaveCSS('display', 'none');
+  await expect(second.locator('#politics')).toHaveCSS('display', 'none');
+  await expect(count).toHaveText('4 unggahan unik diblokir');
+});
+
+test('riwayat menyimpan 50 entri terbaru tanpa mengurangi total atau menghitung ulang entri lama', async () => {
+  const page = await context.newPage();
+  await page.goto('https://x.com/home');
+  const popup = await openPopup();
+  const count = popup.locator('#blocked-count');
+  const entries = popup.locator('#block-history li');
+  await expect(count).toHaveText('3 unggahan unik diblokir');
+
+  const posts = Array.from({ length: 52 }, (_, index) =>
+    makePost(`akun${index}`, 'Jadwal pemilu diumumkan.', '', 200 + index),
+  ).join('');
+  await page.locator('#timeline').evaluate((timeline, html) => timeline.insertAdjacentHTML('beforeend', html), posts);
+  await expect(count).toHaveText('55 unggahan unik diblokir');
+  await expect(entries).toHaveCount(50);
+  await expect(entries.filter({ hasText: '@blocked' })).toHaveCount(0);
+  await expect(entries.filter({ hasText: '@akun51' })).toHaveCount(1);
+
+  await page.reload();
+  await expect(page.locator('#blocked')).toHaveCSS('display', 'none');
+  await popup.reload();
+  await expect(count).toHaveText('55 unggahan unik diblokir');
+  await expect(entries).toHaveCount(50);
 });

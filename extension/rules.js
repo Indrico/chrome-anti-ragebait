@@ -1,3 +1,32 @@
+function normalizePostText(text) {
+  return text.normalize('NFKC')
+    .replace(/[\u200b-\u200d\u2060\ufeff]/gu, '')
+    .replace(/(?:https?:\/\/|www\.)\S+/giu, ' ')
+    .replace(/\s+/gu, ' ')
+    .trim();
+}
+
+const findPoliticalTerm = (() => {
+  const terms = [
+    'pemilihan umum', 'pemilihan kepala daerah', 'wakil presiden', 'partai politik',
+    'kampanye pemilu', 'ketua partai', 'kader partai', 'politik uang', 'debat capres',
+    'anggota dpr', 'dpr ri', 'wali kota', 'pemerintah daerah',
+    'pemilu', 'pilpres', 'pilkada', 'pemilukada', 'pileg', 'pilgub', 'pilbup', 'pilwalkot',
+    'capres', 'cawapres', 'caleg', 'cagub', 'cawagub', 'paslon', 'dapil', 'golput',
+    'presiden', 'gubernur', 'bupati', 'walikota', 'menteri', 'parlemen',
+    'parpol', 'politik', 'politikus', 'politisi', 'koalisi', 'oposisi',
+    'bawaslu', 'kpu', 'dprd', 'dpr', 'mpr',
+  ];
+  const wordCharacter = '[\\p{L}\\p{N}_]';
+  const pattern = new RegExp(`(?<!${wordCharacter})(?:${terms.join('|')})(?!${wordCharacter})`, 'u');
+  const electionHashtag = /#(pemilu|pilpres|pilkada|pileg)20\d{2}(?![\p{L}\p{N}_])/u;
+
+  return (normalizedText) => {
+    const text = normalizedText.toLowerCase().replace(/@[a-z0-9_]+/gu, ' ');
+    return text.match(pattern)?.[0] ?? text.match(electionHashtag)?.[1] ?? null;
+  };
+})();
+
 const isIndonesianRagebait = (() => {
   const indonesianMarkers = new Set([
     'aja', 'aku', 'anda', 'bakal', 'banget', 'biar', 'bikin', 'bisa', 'bodoh',
@@ -27,12 +56,7 @@ const isIndonesianRagebait = (() => {
   const rejectedQuote = /(\b(?:dilarang|jangan (?:tulis|bilang|komentar)|(?:melarang|mengecam) (?:ajakan|komentar|ucapan))\b[^.!?"“‘]{0,48})(?:"[^"]+"|“[^”]+”|‘[^’]+’)/giu;
 
   return (rawText, language = '') => {
-    const formatted = rawText.normalize('NFKC')
-      .replace(/[\u200b-\u200d\u2060\ufeff]/gu, '')
-      .replace(/(?:https?:\/\/|www\.)\S+/giu, ' ')
-      .replace(/\s+/gu, ' ')
-      .replace(rejectedQuote, '$1 ')
-      .trim();
+    const formatted = normalizePostText(rawText).replace(rejectedQuote, '$1 ').trim();
     const text = formatted.toLowerCase();
     if (!text) return false;
 

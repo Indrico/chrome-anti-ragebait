@@ -6,6 +6,7 @@ const { runInNewContext } = require('node:vm');
 
 const script = readFileSync(join(__dirname, '../extension/rules.js'), 'utf8');
 const classify = runInNewContext(script + '\nisIndonesianRagebait;');
+const classifyPolitics = runInNewContext(script + '\n(text) => findPoliticalTerm(normalizePostText(text));');
 
 const cases = [
   ['ajakan berantem', 'Ayo ribut di kolom komentar.', '', true],
@@ -31,4 +32,18 @@ const cases = [
 
 for (const [name, text, lang, expected] of cases) {
   test(name, () => assert.equal(classify(text, lang), expected));
+}
+
+const politicalCases = [
+  ['istilah politik dengan kapital', 'Jadwal PEMILU sudah diumumkan.', 'pemilu'],
+  ['frasa lintas spasi', 'Anggota\n DPR rapat besok.', 'anggota dpr'],
+  ['hashtag pemilihan dengan tahun', 'Pantau #Pilkada2029.', 'pilkada'],
+  ['hashtag dengan tahun dan akhiran lain', 'Baca #Pilkada2029Archive.', null],
+  ['partai dan kampanye nonpolitik', 'Kampanye merek ini tampil di partai semifinal.', null],
+  ['awalan akronim dalam kata lain', 'DPrinter merilis model baru.', null],
+  ['istilah di URL dan nama akun', 'Cek https://contoh.id/pemilu dan @politik.', null],
+];
+
+for (const [name, text, expected] of politicalCases) {
+  test(name, () => assert.equal(classifyPolitics(text), expected));
 }

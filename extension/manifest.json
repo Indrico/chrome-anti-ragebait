@@ -1,10 +1,11 @@
 {
   "manifest_version": 3,
   "name": "Chrome Anti-Ragebait",
-  "version": "0.1.0",
-  "description": "Sembunyikan unggahan yang diduga ragebait dari Beranda X berbahasa Indonesia.",
+  "version": "0.2.0",
+  "description": "Sembunyikan ragebait dan unggahan dengan istilah politik dari Beranda X.",
   "minimum_chrome_version": "120",
   "permissions": ["storage"],
+  "background": { "service_worker": "background.js" },
   "action": {
     "default_title": "Anti-Ragebait",
     "default_popup": "popup.html"

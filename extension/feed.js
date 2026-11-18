@@ -3,6 +3,7 @@
   const cellSelector = '[data-testid="cellInnerDiv"]';
   const postSelector = 'article[data-testid="tweet"]';
   const textSelector = '[data-testid="tweetText"]';
+  const permalinkSelector = 'a[href*="/status/"]:has(time)';
   const postContentSelector = `${postSelector}, ${textSelector}`;
   const activeAttribute = 'data-anti-ragebait-active';
   const stateAttribute = 'data-anti-ragebait-state';
@@ -14,16 +15,51 @@
   let frameId = 0;
   const observer = new MutationObserver(handleMutations);
 
-  function shouldBlock(cell) {
+  function getPostIdentity(post) {
+    for (const link of post.querySelectorAll(permalinkSelector)) {
+      if (post.contains(link.closest('div[role="link"]'))) continue;
+      const permalink = link.getAttribute('href').match(/^(?:https:\/\/x\.com)?\/(?:(?<author>[a-z0-9_]{1,15})\/status\/|i\/web\/status\/)(?<id>\d{1,24})(?:[/?#]|$)/iu);
+      if (permalink) return permalink.groups;
+    }
+    return {};
+  }
+
+  function getBlockDecision(cell) {
     const posts = [...cell.querySelectorAll(postSelector)].filter((post) =>
       post.closest(cellSelector) === cell && !post.parentElement.closest(postSelector),
     );
-    if (posts.length !== 1) return false;
+    if (posts.length !== 1) return null;
 
     // The tweet-text markers identify each text independently, including quoted text.
-    return [...posts[0].querySelectorAll(textSelector)].some((text) =>
-      isIndonesianRagebait(text.textContent, text.getAttribute('lang') ?? ''),
-    );
+    const [post] = posts;
+    const textNodes = [...post.querySelectorAll(textSelector)];
+    for (const text of textNodes) {
+      const rawText = text.textContent;
+      const normalizedText = normalizePostText(rawText);
+      const term = findPoliticalTerm(normalizedText);
+      if (term || isIndonesianRagebait(rawText, text.getAttribute('lang') ?? '')) {
+        const { id, author } = getPostIdentity(post);
+        const preview = normalizedText.slice(0, 180);
+        return {
+          id: id ?? null,
+          author: author ?? null,
+          reason: term ? 'politics' : 'ragebait',
+          term,
+          excerpt: normalizedText.length > preview.length ? `${preview}…` : preview,
+          fallbackText: id ? null : textNodes.map((node) => normalizePostText(node.textContent)).join('\n').slice(0, 4096),
+        };
+      }
+    }
+    return null;
+  }
+
+  async function recordBlockedPosts(posts) {
+    try {
+      const response = await chrome.runtime.sendMessage({ type: 'blocked:record', posts });
+      if (!response?.ok) throw new Error('Recording failed');
+    } catch {
+      console.warn('Anti-Ragebait tidak dapat mencatat seluruh pemblokiran.');
+    }
   }
 
   function scheduleBatch() {
@@ -35,14 +71,17 @@
   function processBatch() {
     frameId = 0;
     const deadline = performance.now() + 6;
+    const blockedPosts = [];
     for (const cell of pendingCells) {
       pendingCells.delete(cell);
       if (cell.isConnected && cell.closest(columnSelector)) {
-        const state = shouldBlock(cell) ? 'blocked' : 'visible';
-        cell.setAttribute(stateAttribute, state);
+        const decision = getBlockDecision(cell);
+        cell.setAttribute(stateAttribute, decision ? 'blocked' : 'visible');
+        if (decision) blockedPosts.push(decision);
       }
       if (performance.now() >= deadline) break;
     }
+    if (blockedPosts.length) void recordBlockedPosts(blockedPosts);
     scheduleBatch();
   }
 
