@@ -10,24 +10,32 @@
 </head>
 <body>
   <h1>Anti-Ragebait</h1>
-  <label class="filter-control">
-    <span>Saring unggahan</span>
-    <input id="enabled" type="checkbox" role="switch" disabled>
-  </label>
-  <label class="filter-control">
-    <span>Blokir politik</span>
-    <input id="politicsEnabled" type="checkbox" role="switch" disabled>
-  </label>
-  <label class="filter-control">
-    <span>Blokir centang biru</span>
-    <input id="blueCheckEnabled" type="checkbox" role="switch" disabled>
-  </label>
-  <label class="filter-control">
-    <span>Saring hasil pencarian</span>
-    <input id="searchEnabled" type="checkbox" role="switch" disabled>
-  </label>
   <p id="status" role="status" hidden></p>
-  <section aria-labelledby="history-heading">
+  <section id="data-use" aria-labelledby="data-use-heading" hidden>
+    <h2 id="data-use-heading">Penggunaan data</h2>
+    <p>Filter membaca teks dan lencana unggahan yang tampil di Beranda dan pencarian X, Facebook, Instagram, dan Threads.</p>
+    <p>Nama penulis, cuplikan, alasan, dan waktu blokir disimpan di perangkat untuk riwayat. Pengenal unggahan dipakai untuk menghitung setiap unggahan sekali. Data ini tetap di browser Anda.</p>
+    <button type="button" id="accept-data-use">Setuju dan aktifkan filter</button>
+  </section>
+  <div id="filter-controls" hidden>
+    <label class="filter-control">
+      <span>Saring unggahan</span>
+      <input id="enabled" type="checkbox" role="switch" disabled>
+    </label>
+    <label class="filter-control">
+      <span>Blokir politik</span>
+      <input id="politicsEnabled" type="checkbox" role="switch" disabled>
+    </label>
+    <label class="filter-control">
+      <span>Blokir centang biru</span>
+      <input id="blueCheckEnabled" type="checkbox" role="switch" disabled>
+    </label>
+    <label class="filter-control">
+      <span>Saring hasil pencarian</span>
+      <input id="searchEnabled" type="checkbox" role="switch" disabled>
+    </label>
+  </div>
+  <section id="history" aria-labelledby="history-heading" hidden>
     <h2 id="history-heading">Riwayat blokir</h2>
     <p id="blocked-count" role="status">Menghitung unggahan…</p>
     <p id="history-status">Memuat riwayat…</p>
@@ -45,5 +53,8 @@
       </li>
     </template>
   </section>
+  <footer>
+    <a href="https://github.com/Indrico/chrome-anti-ragebait/blob/main/PRIVACY.md" target="_blank" rel="noopener noreferrer">Kebijakan privasi</a>
+  </footer>
 </body>
 </html>

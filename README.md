@@ -1,4 +1,4 @@
-# Chrome Anti-Ragebait
+# Anti-Ragebait
 
 Ekstensi Chrome desktop yang otomatis menyaring dugaan ragebait, istilah dan nama politik, serta umpatan di X, Facebook, Instagram, dan Threads. Aturan teks berfokus pada bahasa Indonesia, slang, serta campuran Indonesia–Inggris. Ekstensi juga menyediakan filter opsional untuk unggahan dari akun bercetang biru.
 
@@ -7,7 +7,7 @@ Ekstensi Chrome desktop yang otomatis menyaring dugaan ragebait, istilah dan nam
 1. Unduh ZIP ekstensi dari [rilis terbaru](https://github.com/Indrico/chrome-anti-ragebait/releases/latest), lalu ekstrak.
 2. Buka `chrome://extensions` dan aktifkan **Developer mode**.
 3. Klik **Load unpacked**, lalu pilih folder hasil ekstrak yang langsung berisi `manifest.json`. Jika memasang dari kode sumber, pilih folder `extension`.
-4. Izinkan akses situs jika diminta oleh Chrome. Buka atau muat ulang situs yang didukung. Filter aktif otomatis. Klik ikon **Anti-Ragebait** untuk mengatur filter.
+4. Izinkan akses situs jika diminta oleh Chrome. Buka ikon **Anti-Ragebait**, baca penggunaan data, lalu pilih **Setuju dan aktifkan filter**. Buka atau muat ulang situs yang didukung untuk mulai menyaring unggahan.
 
 Gunakan Chrome desktop versi 120 atau lebih baru. Pemasangan tidak memerlukan akun tambahan, API key, atau pengaturan kata kunci.
 
@@ -44,7 +44,7 @@ Riwayat menampilkan **Centang biru** jika lencana menjadi alasan pemblokiran. Un
 
 Sematkan ikon **Anti-Ragebait** di toolbar Chrome untuk melihat total tanpa membuka popup. Ikon menampilkan `999+` mulai dari 1.000 unggahan. Arahkan kursor ke ikon atau buka popup untuk melihat angka lengkap.
 
-Pemeriksaan dan penyimpanan berlangsung di browser. Status sakelar, pengenal untuk menghitung unggahan unik, dan 50 entri terbaru tersimpan di perangkat. Penghitungan dimulai saat Chrome menggunakan versi 0.2.0 atau lebih baru.
+Pemeriksaan dan penyimpanan berlangsung di browser. Status sakelar, pengenal untuk menghitung unggahan unik, dan 50 entri terbaru tersimpan di perangkat. Versi 0.8.1 meminta persetujuan satu kali. [Kebijakan privasi](PRIVACY.md)
 
 ## Pengujian
 

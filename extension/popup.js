@@ -1,5 +1,9 @@
 const toggles = Object.keys(filterDefaults).map((id) => document.getElementById(id));
 const statusMessage = document.getElementById('status');
+const dataUse = document.getElementById('data-use');
+const acceptDataUse = document.getElementById('accept-data-use');
+const controls = document.getElementById('filter-controls');
+const history = document.getElementById('history');
 const blockedCount = document.getElementById('blocked-count');
 const historyStatus = document.getElementById('history-status');
 const blockHistory = document.getElementById('block-history');
@@ -31,19 +35,39 @@ for (const toggle of toggles) {
   });
 }
 
-async function initializeToggles() {
+async function initializePopup(focusControls = false) {
   try {
-    const settings = await chrome.storage.local.get(toggles.map((toggle) => toggle.id));
+    const settings = await chrome.storage.local.get([dataUseConsentKey, ...Object.keys(filterDefaults)]);
+    if (settings[dataUseConsentKey] !== true) {
+      dataUse.hidden = false;
+      return;
+    }
     for (const toggle of toggles) {
       toggle.checked = readFilterSetting(toggle.id, settings[toggle.id]);
       toggle.disabled = false;
     }
+    dataUse.hidden = true;
+    controls.hidden = false;
+    history.hidden = false;
+    if (focusControls) toggles[0].focus();
+    void loadHistory();
   } catch {
     showError('Pengaturan gagal dibaca. Buka ulang popup.');
   }
 }
 
-void initializeToggles();
+acceptDataUse.addEventListener('click', async () => {
+  acceptDataUse.disabled = true;
+  statusMessage.hidden = true;
+  try {
+    await chrome.storage.local.set({ [dataUseConsentKey]: true });
+    await initializePopup(true);
+  } catch {
+    showError('Persetujuan gagal disimpan. Coba lagi.');
+  } finally {
+    acceptDataUse.disabled = false;
+  }
+});
 
 function createHistoryEntry(entry) {
   const row = entryTemplate.content.firstElementChild.cloneNode(true);
@@ -90,6 +114,6 @@ async function loadHistory() {
 }
 
 chrome.runtime.onMessage.addListener((message) => {
-  if (message?.type === 'blocked:changed') void loadHistory();
+  if (message?.type === 'blocked:changed' && !history.hidden) void loadHistory();
 });
-void loadHistory();
+void initializePopup();

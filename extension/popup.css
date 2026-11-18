@@ -48,7 +48,34 @@ input:focus-visible {
 }
 
 #status {
-  margin-block: 12px 0;
+  margin-block: 0 12px;
+}
+
+#data-use p {
+  line-height: 1.5;
+}
+
+#accept-data-use {
+  min-block-size: 44px;
+  inline-size: 100%;
+  padding-inline: 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: #0d6a56;
+  color: #fff;
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+#accept-data-use:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+footer {
+  margin-block-start: 12px;
+  font-size: 0.9rem;
 }
 
 h2 {

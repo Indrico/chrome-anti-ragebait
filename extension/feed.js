@@ -6,8 +6,8 @@
   const markedCard = `[${stateAttribute}]`;
   const candidateCards = `${adapter.card}, ${markedCard}`;
   const pendingCards = new Map();
-  const settings = { ...filterDefaults };
-  const settingKeys = Object.keys(filterDefaults);
+  const settings = { ...filterDefaults, [dataUseConsentKey]: false };
+  const settingKeys = Object.keys(settings);
   const changesDuringLoad = {};
   const textAttributes = adapter.site === 'x' ? ['lang', 'data-testid', 'href', 'hidden'] : [
     'lang', 'dir', 'role', 'href', 'hidden', 'aria-hidden', 'aria-modal', 'contenteditable',
@@ -162,8 +162,18 @@
     if (!root) return;
     const path = location.pathname.replace(/\/$/u, '') || '/';
     const surface = adapter.surface(path);
-    const nextSurface = settings.enabled && (surface !== 'search' || settings.searchEnabled) ? surface : null;
-    if (activeSurface === nextSurface && !(nextSurface && blueCheckChanged)) return;
+    const enabledSurface = settings.enabled && (surface !== 'search' || settings.searchEnabled) ? surface : null;
+    if (!settingsReady) {
+      // X gets its initial CSS mask while the saved consent and settings load.
+      if (adapter.site === 'x' && enabledSurface) root.setAttribute(activeAttribute, 'x');
+      else root.removeAttribute(activeAttribute);
+      return;
+    }
+    const nextSurface = settings[dataUseConsentKey] ? enabledSurface : null;
+    if (activeSurface === nextSurface && !(nextSurface && blueCheckChanged)) {
+      if (!nextSurface) root.removeAttribute(activeAttribute);
+      return;
+    }
 
     observer.disconnect();
     cancelAnimationFrame(frameId);
@@ -231,9 +241,8 @@
       storedSettings = { enabled: false };
       console.warn('Anti-Ragebait tidak dapat membaca pengaturan.', error);
     }
-    applySettings({ ...storedSettings, ...changesDuringLoad });
     settingsReady = true;
-    scheduleBatch();
+    applySettings({ ...storedSettings, ...changesDuringLoad });
   }
 
   void loadSettings();

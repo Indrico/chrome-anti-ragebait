@@ -59,6 +59,8 @@ test.beforeEach(async () => {
     viewport: { width: 900, height: 700 },
     args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
   });
+  const worker = context.serviceWorkers()[0] ?? await context.waitForEvent('serviceworker');
+  await worker.evaluate(() => chrome.storage.local.set({ dataUseAccepted: true }));
   await context.route('https://x.com/**', (route) => route.fulfill({
     contentType: 'text/html; charset=utf-8',
     body: fixture,
@@ -72,7 +74,7 @@ test.afterEach(async () => {
 async function openPopup() {
   const manager = await context.newPage();
   await manager.goto('chrome://extensions/');
-  const item = manager.locator('extensions-item').filter({ hasText: 'Chrome Anti-Ragebait' });
+  const item = manager.locator('extensions-item').filter({ hasText: 'Anti-Ragebait' });
   const id = await item.getAttribute('id');
   const popup = await context.newPage();
   await popup.goto(`chrome-extension://${id}/popup.html`);
@@ -268,6 +270,31 @@ test('filter aktif sejak pertama dibuka dan kartu terjaring tidak menerima inter
   await expect(page.locator('#normal button')).toBeEnabled();
   await page.keyboard.press('Enter');
   expect(await page.evaluate(() => window.events)).toEqual(['normal']);
+});
+
+test('filter menunggu persetujuan lokal dan aktif di tab yang sudah terbuka setelah disetujui', async () => {
+  const worker = context.serviceWorkers()[0];
+  await worker.evaluate(() => chrome.storage.local.remove('dataUseAccepted'));
+  const page = await context.newPage();
+  await page.goto('https://x.com/home');
+  const popup = await openPopup();
+  const accept = popup.getByRole('button', { name: 'Setuju dan aktifkan filter' });
+  const master = popup.getByRole('switch', { name: 'Saring unggahan' });
+  await expect(accept).toBeVisible();
+  await expect(popup.getByRole('link', { name: 'Kebijakan privasi' })).toBeVisible();
+  await expect(master).toBeHidden();
+  await expect(page.locator('#blocked')).toBeVisible();
+  await expect(page.locator('#blocked')).not.toHaveAttribute('data-anti-ragebait-state');
+  expect(await worker.evaluate(async () => (await readBlockedPosts()).total)).toBe(0);
+
+  await accept.click();
+  await expect(master).toBeFocused();
+  await expect(page.locator('#blocked')).toHaveCSS('display', 'none');
+  await expect(popup.locator('#blocked-count')).toHaveText('3 unggahan unik diblokir');
+  await popup.reload();
+  await expect(accept).toBeHidden();
+  await expect(master).toBeChecked();
+  await expect(popup.getByRole('switch', { name: 'Blokir centang biru' })).not.toBeChecked();
 });
 
 test('kartu baru dan kartu daur ulang diperiksa saat scroll', async () => {

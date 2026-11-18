@@ -1,3 +1,4 @@
+const dataUseConsentKey = 'dataUseAccepted';
 const filterDefaults = {
   enabled: true,
   politicsEnabled: true,
@@ -6,5 +7,5 @@ const filterDefaults = {
 };
 
 function readFilterSetting(key, value) {
-  return typeof value === 'boolean' ? value : filterDefaults[key];
+  return typeof value === 'boolean' ? value : (filterDefaults[key] ?? false);
 }
