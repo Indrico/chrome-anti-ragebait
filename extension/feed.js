@@ -1,6 +1,7 @@
 (() => {
   const columnSelector = '[data-testid="primaryColumn"]';
   const cellSelector = '[data-testid="cellInnerDiv"]';
+  const feedCellSelector = `${columnSelector} ${cellSelector}`;
   const postSelector = 'article[data-testid="tweet"]';
   const textSelector = '[data-testid="tweetText"]';
   const permalinkSelector = 'a[href*="/status/"]:has(time)';
@@ -8,8 +9,10 @@
   const activeAttribute = 'data-anti-ragebait-active';
   const stateAttribute = 'data-anti-ragebait-state';
   const pendingCells = new Set();
+  const settings = { enabled: true, politicsEnabled: true };
+  const settingKeys = Object.keys(settings);
+  const changesDuringLoad = {};
 
-  let enabled = true;
   let settingsReady = false;
   let activePath = null;
   let frameId = 0;
@@ -37,7 +40,9 @@
       const rawText = text.textContent;
       const normalizedText = normalizePostText(rawText);
       const profanity = findProfanityTerm(normalizedText);
-      const politics = activePath === '/home' && !profanity ? findPoliticalTerm(normalizedText) : null;
+      const politics = activePath === '/home' && settings.politicsEnabled && !profanity
+        ? findPoliticalTerm(normalizedText)
+        : null;
       const ragebait = activePath === '/home' && !profanity && !politics &&
         isIndonesianRagebait(rawText, text.getAttribute('lang') ?? '');
       if (!profanity && !politics && !ragebait) continue;
@@ -136,7 +141,7 @@
     const root = document.documentElement;
     if (!root) return;
     const path = location.pathname.replace(/\/$/u, '');
-    const nextPath = enabled && (path === '/home' || path === '/search') ? path : null;
+    const nextPath = settings.enabled && (path === '/home' || path === '/search') ? path : null;
     if (activePath === nextPath) return;
 
     observer.disconnect();
@@ -158,7 +163,18 @@
       attributeFilter: ['lang', 'data-testid'],
       attributeOldValue: true,
     });
-    root.querySelectorAll(`${columnSelector} ${cellSelector}`).forEach(queueCell);
+    root.querySelectorAll(feedCellSelector).forEach(queueCell);
+  }
+
+  function applySettings(updatedSettings) {
+    const previousPath = activePath;
+    const previousPoliticsEnabled = settings.politicsEnabled;
+    Object.assign(settings, updatedSettings);
+    refreshActivation();
+    if (previousPath === '/home' && activePath === '/home' &&
+        previousPoliticsEnabled !== settings.politicsEnabled) {
+      document.querySelectorAll(feedCellSelector).forEach(queueCell);
+    }
   }
 
   if (document.documentElement) {
@@ -173,24 +189,27 @@
   }
   navigation.addEventListener('currententrychange', refreshActivation);
 
-  let receivedSettingChange = false;
   chrome.storage.local.onChanged.addListener((changes) => {
-    if (!changes.enabled) return;
-    receivedSettingChange = true;
-    enabled = changes.enabled.newValue !== false;
-    refreshActivation();
+    if (!changes.enabled && !changes.politicsEnabled) return;
+    const updatedSettings = {};
+    for (const key of settingKeys) {
+      if (changes[key]) updatedSettings[key] = changes[key].newValue !== false;
+    }
+    if (!settingsReady) Object.assign(changesDuringLoad, updatedSettings);
+    applySettings(updatedSettings);
   });
 
   async function loadSettings() {
+    let storedSettings;
     try {
-      const settings = await chrome.storage.local.get('enabled');
-      if (!receivedSettingChange) enabled = settings.enabled !== false;
+      const stored = await chrome.storage.local.get(settingKeys);
+      storedSettings = { enabled: stored.enabled !== false, politicsEnabled: stored.politicsEnabled !== false };
     } catch (error) {
-      if (!receivedSettingChange) enabled = false;
+      storedSettings = { enabled: false };
       console.warn('Anti-Ragebait tidak dapat membaca pengaturan.', error);
     }
+    applySettings({ ...storedSettings, ...changesDuringLoad });
     settingsReady = true;
-    refreshActivation();
     scheduleBatch();
   }
 

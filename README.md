@@ -17,6 +17,8 @@ Untuk memperbarui pemasangan yang sudah ada, salin isi ZIP baru ke folder eksten
 
 Filter membaca teks unggahan dan kutipan. Di Beranda, daftar politik bawaan mencakup kata dan frasa seperti *pemilu*, *pilkada*, *DPR*, dan *partai politik*. Unggahan yang cocok disembunyikan juga saat nadanya netral.
 
+Filter politik aktif secara default. Gunakan sakelar **Blokir politik di Beranda** di popup untuk menjedanya di semua tab X sambil tetap menyaring ragebait dan umpatan.
+
 Di Beranda dan hasil pencarian, satu umpatan dari daftar bawaan, seperti *goblok*, *tolol*, atau *brengsek*, cukup untuk menyembunyikan unggahan. Riwayat menampilkan alasan **Umpatan** dan kata yang cocok. Pengguna tetap bisa mengetik istilah tersebut di kotak pencarian.
 
 Konten bergambar atau bervideo dinilai dari teks unggahan yang menyertainya. Profil dan halaman utas dapat dibuka seperti biasa.
@@ -26,6 +28,8 @@ Filter ragebait sengaja sensitif. Sindiran halus bisa lolos dan candaan dengan g
 ## Jumlah dan riwayat blokir
 
 Klik ikon **Anti-Ragebait** untuk melihat total unggahan unik yang diblokir serta 50 entri terbaru. Entri mencantumkan akun jika tersedia, waktu pemblokiran, alasan, dan cuplikan yang terbuka saat entri dipilih.
+
+Sematkan ikon **Anti-Ragebait** di toolbar Chrome untuk melihat total tanpa membuka popup. Ikon menampilkan `999+` mulai dari 1.000 unggahan. Arahkan kursor ke ikon atau buka popup untuk melihat angka lengkap.
 
 Pemeriksaan dan penyimpanan berlangsung di browser. Status sakelar, pengenal untuk menghitung unggahan unik, dan 50 entri terbaru tersimpan di perangkat. Penghitungan dimulai saat Chrome menggunakan versi 0.2.0 atau lebih baru.
 

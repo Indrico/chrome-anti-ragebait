@@ -1,4 +1,7 @@
 const recentLimit = 50;
+const formatTotal = new Intl.NumberFormat('id-ID');
+// The queue only orders badge writes. The total always comes from IndexedDB.
+let badgeUpdate = Promise.resolve();
 
 function requestResult(request) {
   return new Promise((resolve, reject) => {
@@ -72,6 +75,23 @@ function readBlockedPosts() {
   });
 }
 
+function refreshBadge() {
+  const previousUpdate = badgeUpdate;
+  badgeUpdate = (async () => {
+    await previousUpdate;
+    try {
+      const total = await withBlockHistory('readonly', async (store) => requestResult(store.count()));
+      await Promise.all([
+        chrome.action.setBadgeBackgroundColor({ color: '#0d6a56' }),
+        chrome.action.setBadgeText({ text: total > 999 ? '999+' : String(total) }),
+        chrome.action.setTitle({ title: `Anti-Ragebait · ${formatTotal.format(total)} unggahan unik diblokir` }),
+      ]);
+    } catch {
+      console.warn('Anti-Ragebait tidak dapat memperbarui angka pada ikon.');
+    }
+  })();
+}
+
 async function notifyHistoryChanged() {
   try {
     await chrome.runtime.sendMessage({ type: 'blocked:changed' });
@@ -90,7 +110,10 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       } else {
         const changed = await addBlockedPosts(message.posts);
         sendResponse({ ok: true });
-        if (changed) void notifyHistoryChanged();
+        if (changed) {
+          refreshBadge();
+          void notifyHistoryChanged();
+        }
       }
     } catch {
       sendResponse({ ok: false });
@@ -98,3 +121,6 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   })();
   return true;
 });
+
+chrome.runtime.onInstalled.addListener(refreshBadge);
+chrome.runtime.onStartup.addListener(refreshBadge);

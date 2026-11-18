@@ -216,17 +216,61 @@ test('umpatan diblokir di hasil pencarian dan Beranda serta tercatat di popup', 
   await expect(page.locator('#umpatan')).toHaveCSS('display', 'none');
 });
 
+test('sakelar politik berlaku lintas tab dan tersimpan terpisah dari filter lain', async () => {
+  const first = await context.newPage();
+  const second = await context.newPage();
+  await Promise.all([first.goto('https://x.com/home'), second.goto('https://x.com/home/')]);
+  await expect(first.locator('#politics')).toHaveCSS('display', 'none');
+  await expect(second.locator('#politics')).toHaveCSS('display', 'none');
+
+  const popup = await openPopup();
+  const master = popup.getByRole('switch', { name: 'Saring unggahan X' });
+  const politics = popup.getByRole('switch', { name: 'Blokir politik di Beranda' });
+  await expect(politics).toBeChecked();
+  await politics.uncheck();
+  await expect(first.locator('#politics')).toBeVisible();
+  await expect(second.locator('#politics')).toBeVisible();
+  await expect(first.locator('#blocked')).toHaveCSS('display', 'none');
+  await expect(second.locator('#blocked')).toHaveCSS('display', 'none');
+
+  const posts = makePost('politikBaru', 'Jadwal pemilu telah diumumkan.', '', 112) +
+    makePost('campuran', 'Jadwal pemilu telah diumumkan. Ayo ribut di reply.', '', 113) +
+    makePost('umpatanBaru', 'Goblok!', '', 114);
+  await first.locator('#timeline').evaluate((timeline, html) => timeline.insertAdjacentHTML('beforeend', html), posts);
+  await expect(first.locator('#politikBaru')).toBeVisible();
+  await expect(first.locator('#campuran')).toHaveCSS('display', 'none');
+  await expect(first.locator('#umpatanBaru')).toHaveCSS('display', 'none');
+  await expect(popup.locator('#blocked-count')).toHaveText('5 unggahan unik diblokir');
+
+  await Promise.all([first.reload(), popup.reload()]);
+  await expect(politics).toBeEnabled();
+  await expect(politics).not.toBeChecked();
+  await expect(first.locator('#politics')).toBeVisible();
+  await master.uncheck();
+  await expect(first.locator('#blocked')).toBeVisible();
+  await politics.check();
+  await expect(first.locator('#politics')).toBeVisible();
+  await master.check();
+  await expect(first.locator('#politics')).toHaveCSS('display', 'none');
+  await expect(second.locator('#politics')).toHaveCSS('display', 'none');
+  await expect(popup.locator('#blocked-count')).toHaveText('5 unggahan unik diblokir');
+});
+
 test('riwayat terisi otomatis, menjelaskan alasan, dan mencatat setiap ID sekali lintas tab', async () => {
   const popup = await openPopup();
   const count = popup.locator('#blocked-count');
   const history = popup.locator('#block-history');
+  const worker = context.serviceWorkers()[0] ?? await context.waitForEvent('serviceworker');
+  const readBadge = () => worker.evaluate(() => chrome.action.getBadgeText({}));
   await expect(count).toHaveText('0 unggahan unik diblokir');
+  await expect.poll(readBadge).toBe('0');
   await expect(popup.getByText('Belum ada unggahan yang diblokir.')).toBeVisible();
 
   const first = await context.newPage();
   const second = await context.newPage();
   await Promise.all([first.goto('https://x.com/home'), second.goto('https://x.com/home')]);
   await expect(count).toHaveText('3 unggahan unik diblokir');
+  await expect.poll(readBadge).toBe('3');
   await expect(history.locator('li')).toHaveCount(3);
   await expect(history.getByText('@quoted · Ragebait', { exact: true })).toBeVisible();
   await expect(history.getByText('@kutipan', { exact: false })).toHaveCount(0);
@@ -246,6 +290,9 @@ test('riwayat terisi otomatis, menjelaskan alasan, dan mencatat setiap ID sekali
   await expect(first.locator('#berita')).toHaveCSS('display', 'none');
   await expect(second.locator('#berita')).toHaveCSS('display', 'none');
   await expect(count).toHaveText('4 unggahan unik diblokir');
+  await expect.poll(readBadge).toBe('4');
+  await expect.poll(() => worker.evaluate(() => chrome.action.getTitle({})))
+    .toBe('Anti-Ragebait · 4 unggahan unik diblokir');
   await expect(history.getByText('@berita · Politik (pilpres)', { exact: true })).toBeVisible();
   await expect(politicalEntry.locator('.entry-excerpt')).toBeVisible();
 
@@ -253,6 +300,7 @@ test('riwayat terisi otomatis, menjelaskan alasan, dan mencatat setiap ID sekali
   await expect(first.locator('#politics')).toHaveCSS('display', 'none');
   await expect(second.locator('#politics')).toHaveCSS('display', 'none');
   await expect(count).toHaveText('4 unggahan unik diblokir');
+  await expect.poll(readBadge).toBe('4');
 });
 
 test('riwayat menyimpan 50 entri terbaru tanpa mengurangi total atau menghitung ulang entri lama', async () => {

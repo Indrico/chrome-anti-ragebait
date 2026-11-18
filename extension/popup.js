@@ -1,4 +1,4 @@
-const toggle = document.getElementById('enabled');
+const toggles = ['enabled', 'politicsEnabled'].map((id) => document.getElementById(id));
 const statusMessage = document.getElementById('status');
 const blockedCount = document.getElementById('blocked-count');
 const historyStatus = document.getElementById('history-status');
@@ -14,31 +14,35 @@ function showError(message) {
   statusMessage.hidden = false;
 }
 
-toggle.addEventListener('change', async () => {
-  const requested = toggle.checked;
-  toggle.disabled = true;
-  statusMessage.hidden = true;
-  try {
-    await chrome.storage.local.set({ enabled: requested });
-  } catch {
-    toggle.checked = !requested;
-    showError('Pengaturan gagal disimpan. Coba lagi.');
-  } finally {
-    toggle.disabled = false;
-  }
-});
+for (const toggle of toggles) {
+  toggle.addEventListener('change', async () => {
+    const requested = toggle.checked;
+    toggle.disabled = true;
+    statusMessage.hidden = true;
+    try {
+      await chrome.storage.local.set({ [toggle.id]: requested });
+    } catch {
+      toggle.checked = !requested;
+      showError('Pengaturan gagal disimpan. Coba lagi.');
+    } finally {
+      toggle.disabled = false;
+    }
+  });
+}
 
-async function initializeToggle() {
+async function initializeToggles() {
   try {
-    const { enabled } = await chrome.storage.local.get('enabled');
-    toggle.checked = enabled !== false;
-    toggle.disabled = false;
+    const settings = await chrome.storage.local.get(toggles.map((toggle) => toggle.id));
+    for (const toggle of toggles) {
+      toggle.checked = settings[toggle.id] !== false;
+      toggle.disabled = false;
+    }
   } catch {
     showError('Pengaturan gagal dibaca. Buka ulang popup.');
   }
 }
 
-void initializeToggle();
+void initializeToggles();
 
 function createHistoryEntry(entry) {
   const row = entryTemplate.content.firstElementChild.cloneNode(true);
