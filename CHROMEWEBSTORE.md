@@ -1,6 +1,6 @@
 # Listing Chrome Web Store Anti-Ragebait
 
-Diperbarui 18 November 2026. Paket awal untuk pengajuan Store menggunakan versi `0.8.1`.
+Diperbarui 19 November 2026. Paket terbaru untuk pengajuan Store menggunakan versi `0.8.2`.
 
 ## Store listing
 
@@ -92,7 +92,7 @@ Setelah meninjau isian, penerbit dapat mengesahkan ketiga pernyataan **Data use 
 
 ## Pengunggahan
 
-1. Buka [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole) dengan akun penerbit. Untuk pengajuan baru, pilih **New item** dan unggah ZIP ekstensi `chrome-anti-ragebait-v0.8.1.zip` dari [rilis GitHub v0.8.1](https://github.com/Indrico/chrome-anti-ragebait/releases/tag/v0.8.1). Untuk listing Anti-Ragebait yang sudah ada, buka item tersebut dan unggah paket melalui tab **Package**.
+1. Buka [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole) dengan akun penerbit. Untuk listing Anti-Ragebait yang sudah ada, buka item tersebut dan unggah `chrome-anti-ragebait-v0.8.2.zip` melalui tab **Package**. Untuk pengajuan pertama, unggah paket yang sama melalui **New item**. [Rilis GitHub v0.8.2](https://github.com/Indrico/chrome-anti-ragebait/releases/tag/v0.8.2)
 2. Isi tab **Store listing** dengan teks, URL, screenshot, dan small promo tile di atas. Isi tab **Privacy practices** dengan tujuan, alasan izin, pengungkapan data, dan URL kebijakan privasi.
 3. Untuk listing yang ingin dapat ditemukan di Store, pilih **Public** pada tab **Distribution**. Tinjau pilihan wilayah pada akun penerbit sebelum menyimpan.
 4. Verifikasi pratinjau dan pilih **Submit for review** saat siap. Pengajuan pertama harus melalui Dashboard. [Petunjuk publikasi Google](https://developer.chrome.com/docs/webstore/publish) · [Batasan API Store](https://developer.chrome.com/docs/webstore/api)
@@ -103,4 +103,5 @@ Untuk meninjau filter, buka popup dan berikan persetujuan data. Di Beranda atau 
 
 | Versi | Perubahan |
 | --- | --- |
+| 0.8.2 | Memulihkan filter politik dan umpatan pada tata letak hasil pencarian X yang baru. |
 | 0.8.1 | Ikon asli, persetujuan penggunaan data di popup, dan paket pertama untuk pengajuan Store. |

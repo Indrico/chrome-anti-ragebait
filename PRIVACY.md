@@ -1,6 +1,6 @@
 # Kebijakan privasi Anti-Ragebait
 
-Diperbarui 18 November 2026. Berlaku untuk ekstensi Anti-Ragebait versi 0.8.1.
+Diperbarui 18 November 2026. Berlaku untuk ekstensi Anti-Ragebait mulai versi 0.8.1.
 
 ## Data yang digunakan
 

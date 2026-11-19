@@ -9,7 +9,7 @@
   const settings = { ...filterDefaults, [dataUseConsentKey]: false };
   const settingKeys = Object.keys(settings);
   const changesDuringLoad = {};
-  const textAttributes = adapter.site === 'x' ? ['lang', 'data-testid', 'href', 'hidden'] : [
+  const textAttributes = adapter.site === 'x' ? ['lang', 'dir', 'data-testid', 'href', 'hidden', 'id', 'role'] : [
     'lang', 'dir', 'role', 'href', 'hidden', 'aria-hidden', 'aria-modal', 'contenteditable',
     'data-testid', 'data-caption', 'data-pagelet', 'data-pressable-container', 'data-text-post-text',
     'data-ad-preview', 'data-ad-comet-preview', 'data-ad-rendering-role',

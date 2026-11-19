@@ -411,6 +411,52 @@ test('umpatan diblokir di hasil pencarian dan Beranda serta tercatat di popup', 
   await expect(page.locator('#umpatan')).toHaveCSS('display', 'none');
 });
 
+test('X menyaring hasil pencarian dengan kartu semantik tanpa data-testid', async () => {
+  const card = (id, name, content, postLink) => `<li id="${id}">
+    <div role="link" tabindex="0"><article>
+      <div class="x-middot-group"><div lang="in" dir="auto">${name}</div></div>
+      <div lang="in" dir="auto">${content}</div>
+      <div role="group">${postLink ? `<a href="${postLink}">Lihat analitik</a>` : ''}</div>
+    </article></div>
+  </li>`;
+  const page = await context.newPage();
+  const url = 'https://x.com/search?q=prabowo&src=typed_query';
+  const searchFixture = `<!doctype html><html lang="id"><body>
+    <main><input aria-label="Cari di X" value="prabowo"><section>
+      <div id="urt:search:Top:prabowo"><ul>
+        ${card('nama', 'Kabar', 'Catatan kegiatan.<br><span>Prabowo</span> hadir.', '/kabar/status/310/analytics')}
+        ${card('umpatan', 'Akun contoh', 'Tolong jangan bilang <span>goblok</span>.', '/contoh/status/311/analytics')}
+        ${card('penulis', 'Prabowo', 'Catatan kegiatan hari ini.', '/contoh/status/312/analytics')}
+        ${card('bukanUnggahan', 'Akun contoh', 'Prabowo', 'https://example.org/contoh/status/313/analytics')}
+      </ul></div>
+    </section><ul>${card('luarHasil', 'Akun contoh', 'Prabowo', '/contoh/status/314/analytics')}</ul></main>
+  </body></html>`;
+  await page.route(url, (route) => route.fulfill({ contentType: 'text/html; charset=utf-8', body: searchFixture }));
+  await page.goto(url);
+  await expect(page.locator('#nama')).toHaveCSS('display', 'none');
+  await expect(page.locator('#umpatan')).toHaveCSS('display', 'none');
+  for (const id of ['penulis', 'bukanUnggahan', 'luarHasil']) await expect(page.locator(`#${id}`)).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Cari di X' })).toHaveValue('prabowo');
+
+  const popup = await openPopup();
+  await expect(popup.getByText('@kabar · Politik (Prabowo Subianto)', { exact: true })).toBeVisible();
+  await expect(popup.getByText('@contoh · Umpatan (goblok)', { exact: true })).toBeVisible();
+  const politics = popup.getByRole('switch', { name: 'Blokir politik' });
+  await politics.uncheck();
+  await expect(page.locator('#nama')).toBeVisible();
+  await expect(page.locator('#umpatan')).toHaveCSS('display', 'none');
+  await politics.check();
+  await expect(page.locator('#nama')).toHaveCSS('display', 'none');
+
+  await page.locator('[id^="urt:search:"] ul').evaluate((list, html) => {
+    history.pushState({}, '', '/search?q=goblok&src=typed_query&f=live');
+    list.parentElement.id = 'urt:search:Latest:goblok';
+    list.insertAdjacentHTML('beforeend', html);
+  }, card('hasilBaru', 'Akun contoh', 'Contoh lain. <span>Goblok!</span>', '/contoh/status/315/analytics'));
+  await expect(page.locator('#hasilBaru')).toHaveCSS('display', 'none');
+  await expect(popup.locator('#blocked-count')).toHaveText('3 unggahan unik diblokir');
+});
+
 test('pencarian Prabowo dan sakelar pencarian bekerja lintas situs', async () => {
   const xSearch = await context.newPage();
   const searchUrl = 'https://x.com/search?q=prabowo&src=typed_query';

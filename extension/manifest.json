@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Anti-Ragebait",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "description": "Saring ragebait, politik, umpatan, dan unggahan centang biru di X, Facebook, Instagram, dan Threads.",
   "minimum_chrome_version": "120",
   "permissions": ["storage"],

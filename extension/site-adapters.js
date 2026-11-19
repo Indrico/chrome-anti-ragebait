@@ -4,9 +4,12 @@ const feedAdapters = (() => {
   const excludedText = `${excluded}, [hidden], [aria-hidden="true"], header, footer, time, button, [role="button"], script, style`;
   const main = 'main, [role="main"], [role="feed"]';
   const quote = 'blockquote, [data-testid*="quote" i], [data-ad-rendering-role="shared_story"]';
-  const xCard = '[data-testid="cellInnerDiv"]';
   const xPost = 'article[data-testid="tweet"]';
+  const xTimelineCard = '[data-testid="primaryColumn"] [data-testid="cellInnerDiv"]';
+  const xSearchCard = 'main [id^="urt:search:"] > ul > li:has(> [role="link"] > article)';
+  const xCard = `${xTimelineCard}, ${xSearchCard}`;
   const xText = '[data-testid="tweetText"]';
+  const xSearchText = 'div[lang][dir="auto"]';
   const xAuthor = '[data-testid="User-Name"]';
   const xBadge = 'svg[data-testid="icon-verified"]';
   const xBlue = 'rgb(29, 155, 240)';
@@ -97,24 +100,32 @@ const feedAdapters = (() => {
   }
 
   function readX(card, readBlueCheck) {
-    const posts = [...card.querySelectorAll(xPost)].filter((post) =>
-      post.closest(xCard) === card && !post.parentElement.closest(xPost),
-    );
+    const searchLayout = card.matches(xSearchCard);
+    const postSelector = searchLayout ? ':scope > [role="link"] > article' : xPost;
+    const posts = [...card.querySelectorAll(postSelector)].filter((post) =>
+      post.closest(xCard) === card && !post.parentElement.closest(xPost));
     if (posts.length !== 1) return null;
     const [post] = posts;
     let identity = {};
-    for (const link of post.querySelectorAll('a[href*="/status/"]:has(time)')) {
-      if (post.contains(link.closest('div[role="link"]'))) continue;
-      const match = link.getAttribute('href').match(/^(?:https:\/\/x\.com)?\/(?:(?<author>[a-z0-9_]{1,15})\/status\/|i\/web\/status\/)(?<id>\d{1,24})(?:[/?#]|$)/iu);
+    const timeLink = 'a[href*="/status/"]:has(time)';
+    const postLinks = searchLayout ? `${timeLink}, [role="group"] a[href*="/status/"]` : timeLink;
+    for (const link of post.querySelectorAll(postLinks)) {
+      if (link.closest('article') !== post || post.contains(link.closest('div[role="link"]'))) continue;
+      const path = postLink(link, 'x.com')?.pathname;
+      const match = path?.match(/^\/(?:(?<author>[a-z0-9_]{1,15})\/status\/|i\/web\/status\/)(?<id>\d{1,24})(?:\/|$)/iu);
       if (match) {
         identity = match.groups;
         break;
       }
     }
-    const texts = [...post.querySelectorAll(xText)].map((text) => ({
-      rawText: text.textContent,
-      language: text.getAttribute('lang') ?? '',
-    })).filter(({ rawText }) => rawText.trim());
+    if (searchLayout && !identity.id) return null;
+    const texts = searchLayout
+      ? textParts([...post.querySelectorAll(`${xText}, ${xSearchText}`)].filter((text) =>
+        !text.closest('.x-middot-group, [role="group"]')))
+      : [...post.querySelectorAll(xText)].map((text) => ({
+        rawText: text.textContent,
+        language: text.getAttribute('lang') ?? '',
+      })).filter(({ rawText }) => rawText.trim());
     return { ...identity, texts, blueCheck: readBlueCheck && hasXBlueCheck(post, card) };
   }
 
@@ -229,7 +240,7 @@ const feedAdapters = (() => {
 
   return {
     'x.com': {
-      site: 'x', scope: '[data-testid="primaryColumn"]', card: xCard, content: `${xPost}, ${xText}`,
+      site: 'x', card: xCard, content: `article, ${xText}, ${xSearchText}`,
       badgeContent: `${xAuthor}, ${xBadge}`, badgeTarget: `${xAuthor}, ${xAuthor} *`,
       badgeAttributes: ['class', 'style', 'fill', 'color'],
       surface: (path) => surface(path, /^\/home$/u, /^\/search$/u), read: readX,

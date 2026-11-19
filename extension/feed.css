@@ -5,7 +5,9 @@ html[data-anti-ragebait-active] [data-anti-ragebait-state="blocked"] {
 html[data-anti-ragebait-active] [data-anti-ragebait-state="pending"],
 html[data-anti-ragebait-active] [data-anti-ragebait-state="pending"] *,
 html[data-anti-ragebait-active="x"] [data-testid="primaryColumn"] [data-testid="cellInnerDiv"]:has(article[data-testid="tweet"]):not([data-anti-ragebait-state]),
-html[data-anti-ragebait-active="x"] [data-testid="primaryColumn"] [data-testid="cellInnerDiv"]:has(article[data-testid="tweet"]):not([data-anti-ragebait-state]) * {
+html[data-anti-ragebait-active="x"] [data-testid="primaryColumn"] [data-testid="cellInnerDiv"]:has(article[data-testid="tweet"]):not([data-anti-ragebait-state]) *,
+html[data-anti-ragebait-active="x"] main [id^="urt:search:"] > ul > li:has(> [role="link"] > article):not([data-anti-ragebait-state]),
+html[data-anti-ragebait-active="x"] main [id^="urt:search:"] > ul > li:has(> [role="link"] > article):not([data-anti-ragebait-state]) * {
   visibility: hidden !important;
   pointer-events: none !important;
 }

@@ -44,7 +44,7 @@ Riwayat menampilkan **Centang biru** jika lencana menjadi alasan pemblokiran. Un
 
 Sematkan ikon **Anti-Ragebait** di toolbar Chrome untuk melihat total tanpa membuka popup. Ikon menampilkan `999+` mulai dari 1.000 unggahan. Arahkan kursor ke ikon atau buka popup untuk melihat angka lengkap.
 
-Pemeriksaan dan penyimpanan berlangsung di browser. Status sakelar, pengenal untuk menghitung unggahan unik, dan 50 entri terbaru tersimpan di perangkat. Versi 0.8.1 meminta persetujuan satu kali. [Kebijakan privasi](PRIVACY.md)
+Pemeriksaan dan penyimpanan berlangsung di browser. Status sakelar, pengenal untuk menghitung unggahan unik, dan 50 entri terbaru tersimpan di perangkat. Mulai versi 0.8.1, popup meminta persetujuan satu kali. [Kebijakan privasi](PRIVACY.md)
 
 ## Pengujian
 
